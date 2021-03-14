@@ -6,7 +6,7 @@ pub struct UnixKb {
 
 }
 
-impl Keys for UnixKb {
+impl Setup for UnixKb {
     type TRuntime = UnixRuntime;
     type TRaw = ();
 
@@ -32,7 +32,6 @@ pub struct UnixRuntime {
 impl Runtime<UnixKb> for UnixRuntime {
 
     fn inject(&self, _ev: KeyEvent<()>) -> () {
-        todo!()
     }
 }
 

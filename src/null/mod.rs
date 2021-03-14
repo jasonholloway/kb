@@ -1,4 +1,4 @@
-use crate::common::{Keys, Handler, Runtime, KeyEvent};
+use crate::common::{Setup, Handler, Runtime, KeyEvent};
 use std::io::Error;
 
 
@@ -6,7 +6,7 @@ pub struct NullKb {
 }
 
 
-impl Keys for NullKb {
+impl Setup for NullKb {
 
     type TRuntime = NullRuntime;
     type TRaw = ();

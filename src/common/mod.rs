@@ -15,7 +15,7 @@ pub enum Response {
 
 pub type Handler<TRaw> = fn(ev: KeyEvent<TRaw>) -> Response;
 
-pub trait Keys : Sized
+pub trait Setup : Sized
 {
     type TRuntime : Runtime<Self>;
     type TRaw;
@@ -23,6 +23,6 @@ pub trait Keys : Sized
     fn install(&self, handler: Handler<Self::TRaw>) -> Result<Self::TRuntime, Error>;
 }
 
-pub trait Runtime<K : Keys> {
+pub trait Runtime<K : Setup> {
     fn inject(&self, ev: KeyEvent<K::TRaw>) -> ();
 }

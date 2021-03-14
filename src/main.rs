@@ -1,5 +1,4 @@
-use common::Response;
-use common::KeyEvent;
+use common::*;
 
 #[cfg(windows)]
 mod windows;
@@ -23,10 +22,10 @@ pub fn main() {
     }
 }
 
-fn run<K: common::Keys>(keys: K) {
+fn run<K: Setup>(keys: K) {
     let runtime = keys.install(handle).unwrap();
 
-    common::Runtime::inject(&runtime, common::KeyEvent::Up(0, None));
+    runtime.inject(KeyEvent::Up(0, None));
 }
 
 
@@ -54,8 +53,9 @@ mod tests {
     fn test_something() {
 
         let kb = (null::NullKb {});
-        kb.install();
+        let rt = kb.install(|ev| Response::Skip).unwrap();
 
+        
 
         
         assert_eq!(2+2, 5);
