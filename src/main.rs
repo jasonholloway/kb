@@ -38,7 +38,7 @@ fn handle<TRaw>(ev: KeyEvent<TRaw>) -> Response {
         KeyEvent::Down(_, _) => {}
     }
     
-		Response::Skip
+    Response::Skip
 }
 
 
@@ -54,7 +54,7 @@ mod tests {
     fn test_something() {
 
         let kb = (null::NullKb {});
-				kb.install();
+        kb.install();
 
 
         
