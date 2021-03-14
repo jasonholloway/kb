@@ -1,4 +1,7 @@
-use crate::common::Keys;
+#[cfg(windows)]
+extern crate winapi;
+
+use crate::Keys;
 use std::io::Error;
 use std::ptr::null_mut;
 use winapi::shared::minwindef::{LPARAM, LRESULT, WPARAM};
@@ -7,7 +10,7 @@ use winapi::um::winuser::{
     UnhookWindowsHookEx, WH_KEYBOARD_LL, MSG, WM_QUIT, KBDLLHOOKSTRUCT, HC_ACTION
 };
 
-pub struct WinKeys {
+pub struct WinKb {
 }
 
     unsafe extern "system" fn key_handler(code: i32, wParam: WPARAM, lParam: LPARAM) -> LRESULT {
@@ -29,13 +32,9 @@ pub struct WinKeys {
         CallNextHookEx(null_mut(), code, wParam, lParam)
     }
 
-impl Keys for WinKeys {
+impl Keys for WinKb {
 
     fn install(&self) -> Result<i32, Error> {
-
-        let x = 13;
-
-
 
         let _h = unsafe { SetWindowsHookExW(WH_KEYBOARD_LL, Some(key_handler), null_mut(), 0) };
         if _h.is_null() {
