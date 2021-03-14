@@ -23,58 +23,52 @@ impl Setup for UnixKb {
     fn install(&self, handler: Handler<Self::TRaw>) -> Result<Self::TRuntime, Error> {
 
 				let file = File::open("/dev/input/by-path/platform-i8042-serio-0-event-kbd").unwrap();
-				let d = evdev_rs::Device::new_from_fd(file).unwrap();
-				dev_info::dev_info(&d);
+				let source = evdev_rs::Device::new_from_fd(file).unwrap();
+				dev_info::dev_info(&source);
 
+				let _sink = evdev_rs::UInputDevice::create_from_device(&source).unwrap();
 
 				let mut mode: Mode = Mode::Read;
 				
 				loop {
-						match mode {
-								Mode::Read => {
-										match d.next_event(ReadFlag::NORMAL | ReadFlag::BLOCKING) {
-												Result::Ok((status, ev)) => {
-														match status {
-																ReadStatus::Success => {
-																		if let EventType::EV_KEY = ev.event_type {
-																				event_info(&ev)
-																		}
-																		
-																		mode = Mode::Read;
+						let res = match mode {
+								Mode::Read => source
+										.next_event(ReadFlag::NORMAL | ReadFlag::BLOCKING)
+										.map(|(status, ev)| {
+												match status {
+														ReadStatus::Success => {
+																if let EventType::EV_KEY = ev.event_type {
+																		event_info(&ev);
 																}
-																ReadStatus::Sync => {
-																		mode = Mode::Sync;
-																}
+																Mode::Read
 														}
-												}
 
-												Result::Err(err) => {
-														match err.raw_os_error() {
-																Some(libc::EAGAIN) => { continue }
-																_ => { break }
-														}
+														ReadStatus::Sync => Mode::Sync
 												}
-										};
+										}),
+
+								Mode::Sync => source
+										.next_event(ReadFlag::SYNC)
+										.map(|(status, _)| {
+												match status {
+														ReadStatus::Sync => Mode::Sync,
+
+														_ => Mode::Read
+												}
+										})
+							};
+				
+						match res {
+								Result::Err(err) => {
+										match err.raw_os_error() {
+												Some(libc::EAGAIN) => continue,
+												_ => break
+										}
 								}
 
-								Mode::Sync => {
-										match d.next_event(ReadFlag::SYNC) {
-												Result::Ok((status, _)) => {
-														match status {
-																ReadStatus::Sync => {}
-																_ => {
-																		mode = Mode::Read;
-																}
-														}
-												}
-
-												Result::Err(err) => {
-														match err.raw_os_error() {
-																Some(libc::EAGAIN) => { continue }
-																_ => { break }
-														}
-												}
-										}
+								Result::Ok(next) => {
+										mode = next;
+										continue;
 								}
 						}
 				}
