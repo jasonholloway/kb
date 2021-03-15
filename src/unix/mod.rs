@@ -1,6 +1,6 @@
 use crate::common::*;
-use std::{ffi::{CString, OsStr}, fs::File, io::Error};
-use std::time::{SystemTime,Duration};
+use std::{fs::File, io::Error};
+use std::time::{SystemTime};
 use std::convert::TryFrom;
 use evdev_rs::*;
 use evdev_rs::enums::*;
@@ -9,7 +9,7 @@ use Response::*;
 use self::dev_info::event_info;
 
 mod dev_info;
-
+mod timer;
 
 pub struct UnixKb {
 
@@ -31,6 +31,8 @@ impl Setup for UnixKb {
 				
 				let sink = UInputDevice::create_from_device(&source).unwrap();
 		
+
+				timer::set_itimer(std::time::Duration::from_millis(500)).unwrap();
 				
 
 				// dev_info::dev_info(&source);
@@ -90,9 +92,10 @@ impl Setup for UnixKb {
 				
 						match res {
 								Result::Err(err) => {
+										println!("{}", err);
+
 										match err.raw_os_error() {
 												Some(libc::EAGAIN) => {
-														println!("{}", err);
 														continue
 												},
 												
@@ -140,16 +143,4 @@ impl Drop for UnixRuntime {
 pub fn open_device(path: &str) -> Result<Device, Error>
 {
 		return Device::new_from_fd(File::open(&path).unwrap());
-		
-		use std::os::unix::io::FromRawFd;
-
-		let path = CString::new(path).unwrap();
-    let fd = match unsafe {
-        libc::open(path.into_raw(), libc::O_RDONLY | libc::O_NONBLOCK | libc::O_CLOEXEC)
-    } {
-        -1 => return Err(Error::last_os_error()),
-        res => res
-    };
-    // maybe drain events here?
-    Device::new_from_fd(unsafe { File::from_raw_fd(fd) })
 }
