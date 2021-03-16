@@ -1,19 +1,14 @@
-use libc::{c_int, c_void, timeval, time_t, itimerval, ITIMER_REAL, ITIMER_VIRTUAL, sighandler_t};
+use libc::{c_int, c_void, timeval, itimerval, ITIMER_REAL, sighandler_t};
 use std::ptr::null_mut;
 use std::io::Error;
 use std::time::Duration;
 use std::convert::TryFrom;
 use std::mem::MaybeUninit;
 
-pub static mut ALRMS: i64 = 0;
-
-// extern fn handler(_: c_int, _: &libc::siginfo_t, _: c_void) -> () {
-//     unsafe { ALRMS += 1 };
-//     // catch_alrm();
-// }
+pub static mut SIGALRM_COUNT: i64 = 0;
 
 extern fn handler(_: c_int) {
-    unsafe { ALRMS += 1 };
+    unsafe { SIGALRM_COUNT += 1 };
 }
     
 
@@ -22,7 +17,7 @@ pub fn catch_alrm() -> Result<(), Error> {
         let spec: libc::sigaction = libc::sigaction {
             sa_sigaction: handler as *mut c_void as sighandler_t,
             sa_mask: MaybeUninit::zeroed().assume_init(),
-            sa_flags: 0, // libc::SA_SIGINFO,
+            sa_flags: 0,
             sa_restorer: None
         };
 

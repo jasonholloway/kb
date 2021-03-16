@@ -1,6 +1,6 @@
 use crate::common::*;
 use std::{fs::File, io::Error};
-use std::time::{SystemTime};
+use std::time::SystemTime;
 use std::convert::TryFrom;
 use std::time::Duration;
 use evdev_rs::*;
@@ -23,7 +23,7 @@ impl Setup for UnixKb {
     type TRuntime = UnixRuntime;
     type TRaw = ();
 
-    fn install(&self, handler: Handler<Self::TRaw>) -> Result<Self::TRuntime, Error> {
+    fn install<TState>(&self, state: TState, handler: Handler<TState, Self::TRaw>) -> Result<Self::TRuntime, Error> {
 
         let mut source = open_device("/dev/input/by-path/platform-i8042-serio-0-event-kbd")
             .unwrap();
@@ -45,7 +45,7 @@ impl Setup for UnixKb {
                     .map(|(status, ev)| {
                         match status {
                             ReadStatus::Success => {
-                                println!("C: {}", unsafe { timer::ALRMS });
+                                println!("C: {}", unsafe { timer::SIGALRM_COUNT });
                                 
                                 match ev.event_code {
                                     EventCode::EV_MSC(EV_MSC::MSC_SCAN) => Mode::Read,
@@ -118,7 +118,7 @@ impl Setup for UnixKb {
         }
         
 
-        let resp = handler(KeyEvent::Down(0, None));
+        let resp = handler(state, Update::Key(KeyEvent::Down(0, None)));
 
         match resp {
             Skip => {}

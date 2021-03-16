@@ -11,7 +11,7 @@ impl Setup for NullKb {
     type TRuntime = NullRuntime;
     type TRaw = ();
     
-    fn install(&self, _: Handler<()>) -> Result<NullRuntime, Error> {
+    fn install<TState>(&self, state: TState,_handler: Handler<TState, ()>) -> Result<NullRuntime, Error> {
         todo!()
     }
 }
