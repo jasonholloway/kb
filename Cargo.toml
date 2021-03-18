@@ -8,6 +8,8 @@ edition = "2018"
 
 [dependencies]
 cfg-if = "1.0.0"
+bitmaps = "2.1.0"
+typenum = "1.11.2"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["minwindef","winuser","wincon"] }
@@ -16,5 +18,3 @@ windebug_logger = "0.1.4"
 [target.'cfg(unix)'.dependencies]
 evdev-rs = "0.4.0"
 libc = "0.2.88"
-strum = "0.20"
-strum_macros = "0.20"

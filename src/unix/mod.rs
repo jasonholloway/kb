@@ -1,151 +1,172 @@
 use crate::common::*;
-use std::{fs::File, io::Error};
+use std::{fs::File, io::{Error,ErrorKind::*}};
 use std::time::SystemTime;
 use std::convert::TryFrom;
 use std::time::Duration;
 use evdev_rs::*;
 use evdev_rs::enums::*;
-use Response::*;
 
 use self::dev_info::event_info;
 
 mod dev_info;
 mod timer;
 
-pub struct UnixKb {
-
-}
-
-
 enum Mode { Read, Sync }
 
-impl Setup for UnixKb {
-    type TRuntime = UnixRuntime;
-    type TRaw = ();
+pub fn run<TState>(state: &mut TState, handler: Handler<TState, InputEvent>) -> Result<(), Error> {
 
-    fn install<TState>(&self, state: TState, handler: Handler<TState, Self::TRaw>) -> Result<Self::TRuntime, Error> {
+		let mut buff = std::collections::VecDeque::new();
+		
+		let mut source = open_device("/dev/input/by-path/platform-i8042-serio-0-event-kbd")
+				.unwrap();
 
-        let mut source = open_device("/dev/input/by-path/platform-i8042-serio-0-event-kbd")
-            .unwrap();
+		source.grab(GrabMode::Grab).unwrap();
+		// dev_info::dev_info(&source);
 
-        source.grab(GrabMode::Grab).unwrap();
-        // dev_info::dev_info(&source);
-        
-        let sink = UInputDevice::create_from_device(&source).unwrap();
+		let sink = UInputDevice::create_from_device(&source).unwrap();
 
-        timer::catch_alrm().unwrap();
-        let _timer = timer::set_itimer(Duration::from_millis(40)).unwrap();
+		timer::catch_alrm().unwrap();
+		let _timer = timer::set_itimer(Duration::from_millis(40)).unwrap();
 
-        let mut mode: Mode = Mode::Read;
-        
-        loop {
-            let res = match mode {
-                Mode::Read => source
-                    .next_event(ReadFlag::NORMAL | ReadFlag::BLOCKING)
-                    .map(|(status, ev)| {
-                        match status {
-                            ReadStatus::Success => {
-                                println!("C: {}", unsafe { timer::SIGALRM_COUNT });
-                                
-                                match ev.event_code {
-                                    EventCode::EV_MSC(EV_MSC::MSC_SCAN) => Mode::Read,
+		let mut mode: Mode = Mode::Read;
 
-                                    EventCode::EV_KEY(_) => {
-                                        event_info(&ev);
+		loop {
+				let res = match mode {
+						Mode::Read => source
+								.next_event(ReadFlag::NORMAL | ReadFlag::BLOCKING)
+								.and_then(|(status, ev)| {
+										// event_info(&ev);
+										match status {
+												ReadStatus::Success => {
+														match ev.event_code {
 
-                                        sink.write_event(&ev).unwrap();
+																EventCode::EV_KEY(_) => {
+																		use crate::{Update::*,Movement::*};
+																		
 
-                                        sink.write_event(&InputEvent {
-                                            time: TimeVal::try_from(SystemTime::now()).unwrap(),
-                                            event_type: EventType::EV_SYN,
-                                            event_code: EventCode::EV_SYN(EV_SYN::SYN_REPORT),
-                                            value: 0
-                                        }).unwrap(); // 
+																		let code = ev.as_raw().code;
 
-                                        // std::thread::sleep(std::time::Duration::from_millis(20));
+																		let update = match ev.value {
+																				0 => Key(code, Up, Some(ev)),
+																				1 => Key(code, Down, Some(ev)),
+																				2 => Key(code, Down, Some(ev)),
+																				_ => return Err(Error::new(InvalidData, "strange event value"))
+																		};
+																		
+																		let _nextDue = handler(state, &mut buff, update);
 
-                                        Mode::Read
-                                    }, 
+																		let do_sync = buff.len() > 0;
 
-                                    _ => {
-                                        sink.write_event(&ev).unwrap();
-                                        Mode::Read
-                                    }
-                                }
-                            }
+																		for e in buff.drain(..) {
+																				match e {
+																						Key(_, _, Some(raw)) => {
+																								sink.write_event(&raw).unwrap();
+																						},
 
-                            ReadStatus::Sync => Mode::Sync
-                        }
-                    }),
+																						Key(_c, _move, None) => {
+																								// sink.write_event(&raw).unwrap();
+																						},
 
-                Mode::Sync => source
-                    .next_event(ReadFlag::SYNC)
-                    .map(|(status, _)| {
-                        println!("SYNC!");
-                        match status {
-                            ReadStatus::Sync => Mode::Sync,
+																						_ => {}
+																				}
+																		}
 
-                            _ => Mode::Read
-                        }
-                    })
-              };
-        
-            match res {
-                Result::Err(err) => {
+																		if do_sync {
+																				sink.write_event(&InputEvent {
+																						time: TimeVal::try_from(SystemTime::now()).unwrap(),
+																						event_type: EventType::EV_SYN,
+																						event_code: EventCode::EV_SYN(EV_SYN::SYN_REPORT),
+																						value: 0
+																				}).unwrap();
+																		}
 
-                    match err.raw_os_error() {
-                        Some(libc::EAGAIN) => {
-                            continue
-                        },
+																		Ok(Mode::Read)
+																}, 
 
-                        Some(libc::EINTR) => {
-                            //should process pending jobs here
-                            continue;
-                        },
-                        
-                        _ => {
-                            println!("ERROR! {}", err);
-                            break;
-                        }
-                    }
-                }
+																EventCode::EV_MSC(EV_MSC::MSC_SCAN) => Ok(Mode::Read),
 
-                Result::Ok(next) => {
-                    mode = next;
-                    continue;
-                }
-            }
-        }
-        
+																_ => {
+																		sink.write_event(&ev).unwrap();
+																		Ok(Mode::Read)
+																}
+														}
+												}
 
-        let resp = handler(state, Update::Key(KeyEvent::Down(0, None)));
+												ReadStatus::Sync => Ok(Mode::Sync)
+										}
+								}),
 
-        match resp {
-            Skip => {}
-            Grab => {}
-        }
-        
-        Ok(UnixRuntime {})
-    }
+						Mode::Sync => source
+								.next_event(ReadFlag::SYNC)
+								.and_then(|(status, _)| {
+										println!("SYNC!");
+										match status {
+												ReadStatus::Sync => Ok(Mode::Sync),
+												_ => Ok(Mode::Read)
+										}
+								})
+					};
+
+				match res {
+						Result::Err(err) => {
+
+								match err.raw_os_error() {
+										Some(libc::EINTR) => {
+												use crate::Update::*;
+												
+												let _nextDue = handler(state, &mut buff, Tick);
+
+												let do_sync = buff.len() > 0;
+
+												for e in buff.drain(..) {
+														match e {
+																Key(_, _, Some(raw)) => {
+																		sink.write_event(&raw).unwrap();
+																},
+
+																Key(_c, _move, None) => {
+																		// sink.write_event(&raw).unwrap();
+																},
+
+																_ => {}
+														}
+												}
+
+												if do_sync {
+														sink.write_event(&InputEvent {
+																time: TimeVal::try_from(SystemTime::now()).unwrap(),
+																event_type: EventType::EV_SYN,
+																event_code: EventCode::EV_SYN(EV_SYN::SYN_REPORT),
+																value: 0
+														}).unwrap();
+												}
+												
+												continue;
+										},
+
+										Some(libc::EAGAIN) => {
+												continue
+										},
+
+										_ => {
+												println!("ERROR! {}", err);
+												break;
+										}
+								}
+						}
+
+						Result::Ok(next) => {
+								mode = next;
+								continue;
+						}
+				}
+		}
+
+		Ok(())
 }
 
 
-
-pub struct UnixRuntime {
-}
-
-impl Runtime<UnixKb> for UnixRuntime {
-
-    fn inject(&self, _ev: KeyEvent<()>) -> () {
-    }
-}
-
-impl Drop for UnixRuntime {
-    fn drop(&mut self) {
-    }
-}
-
-pub fn open_device(path: &str) -> Result<Device, Error>
+fn open_device(path: &str) -> Result<Device, Error>
 {
     return Device::new_from_fd(File::open(&path).unwrap());
 }

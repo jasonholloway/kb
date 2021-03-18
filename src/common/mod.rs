@@ -1,33 +1,25 @@
+use std::collections::VecDeque;
 
-use std::io::Error;
 
-
-pub enum KeyEvent<TRaw> {
-    Up(u8, Option<TRaw>),
-    Down(u8, Option<TRaw>)
-}
-
+#[derive(Debug)]
 pub enum Update<TRaw> {
-    Key(KeyEvent<TRaw>),
+    Key(u16, Movement, Option<TRaw>),
     Tick
 }
 
-pub enum Response {
-    Grab,
-    Skip
+#[derive(Debug)]
+pub enum Movement {
+    Up,
+    Down
 }
 
 
-pub type Handler<TState, TRaw> = fn(state: TState, update: Update<TRaw>) -> Response;
+pub type NextDue = u64;
 
-pub trait Setup : Sized
-{
-    type TRuntime : Runtime<Self>;
-    type TRaw;
-    
-    fn install<TState>(&self, state: TState, handler: Handler<TState, Self::TRaw>) -> Result<Self::TRuntime, Error>;
-}
 
-pub trait Runtime<K : Setup> {
-    fn inject(&self, ev: KeyEvent<K::TRaw>) -> ();
-}
+pub type Handler<TState, TRaw> = fn(
+    state: &mut TState,
+    buff: &mut VecDeque<Update<TRaw>>,
+    update: Update<TRaw>
+) -> NextDue;
+

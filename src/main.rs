@@ -1,6 +1,11 @@
 extern crate libc;
+extern crate bitmaps;
+extern crate typenum;
 
 use common::*;
+use std::collections::VecDeque;
+use bitmaps::*;
+use typenum::consts::U1024;
 
 
 #[cfg(windows)]
@@ -15,40 +20,56 @@ mod null;
 
 
 pub fn main() {
+    let mut state = State {
+        count: 0,
+        keys: Bitmap::new()
+    };
+    
     cfg_if::cfg_if! {
         if #[cfg(windows)] {
-          run(windows::WinKb { })
+            run(windows::WinKb { })
         } else if #[cfg(unix)] {
-          run(unix::UnixKb { })
+            unix::run(&mut state, handle).unwrap();
         } else {
-          run(null::NullKb { })
+            null::run(&mut state, handle).unwrap();
         }
     }
 }
 
-fn run<K: Setup>(keys: K) {
-    let runtime = keys.install(State {}, handle).unwrap();
 
-    runtime.inject(KeyEvent::Up(0, None));
+struct State {
+    count: u32,
+    keys: Bitmap<U1024>
 }
 
+use common::{Update::*,Movement::*};
 
-
-struct State {}
-
-
-fn handle<TRaw>(state: State, update: Update<TRaw>) -> Response {
-    use common::{Update::*,KeyEvent::*};
+fn handle<TRaw : std::fmt::Debug>(
+    state: &mut State,
+    buff: &mut VecDeque<Update<TRaw>>,
+    update: Update<TRaw>
+) -> NextDue {
     
-    match update {
-        Key(Up(_, _)) => {}
-            
-        Key(Down(_, _)) => {}
+    println!("{} {:?}", state.count, update);
+    state.count += 1;
+    
+    match &update {
+        Key(code, movement, raw) => {
+            match movement {
+                Up => state.keys.set(*code as usize, false),
+                Down => state.keys.set(*code as usize, true),
+            };
 
-        Tick => {}
+            match raw {
+                Some(_) => buff.push_back(update),
+                None => {}
+            };
+        }
+
+        _ => {}
     }
     
-    Response::Skip
+    0
 }
 
 
@@ -62,13 +83,6 @@ mod tests {
 
     #[test]
     fn test_something() {
-
-        let kb = (null::NullKb {});
-        let rt = kb.install(|ev| Response::Skip).unwrap();
-
-        
-
-        
         assert_eq!(2+2, 5);
     }
 
