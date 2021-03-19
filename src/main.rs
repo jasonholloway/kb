@@ -1,12 +1,13 @@
-extern crate libc;
 extern crate bitmaps;
 extern crate typenum;
+
+#[cfg(unix)]
+extern crate libc;
 
 use common::*;
 use std::collections::VecDeque;
 use bitmaps::*;
 use typenum::consts::U1024;
-
 
 #[cfg(windows)]
 mod windows;
@@ -27,7 +28,7 @@ pub fn main() {
     
     cfg_if::cfg_if! {
         if #[cfg(windows)] {
-            run(windows::WinKb { })
+            windows::run(&mut state, handle).unwrap();
         } else if #[cfg(unix)] {
             unix::run(&mut state, handle).unwrap();
         } else {

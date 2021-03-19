@@ -1,7 +1,6 @@
 #[cfg(windows)]
 extern crate winapi;
 
-use crate::Keys;
 use std::io::Error;
 use std::ptr::null_mut;
 use winapi::shared::minwindef::{LPARAM, LRESULT, WPARAM};
@@ -10,59 +9,53 @@ use winapi::um::winuser::{
     UnhookWindowsHookEx, WH_KEYBOARD_LL, MSG, WM_QUIT, KBDLLHOOKSTRUCT, HC_ACTION
 };
 
-pub struct WinKb {
-}
+unsafe extern "system" fn key_handler(code: i32, wParam: WPARAM, lParam: LPARAM) -> LRESULT {
+    if code == HC_ACTION {
+      let message = wParam as u32;
+      let kb = lParam as *const KBDLLHOOKSTRUCT;
+      let flags = (*kb).flags;
+      let scanCode = (*kb).scanCode;
+      let extra = (*kb).dwExtraInfo;
 
-    unsafe extern "system" fn key_handler(code: i32, wParam: WPARAM, lParam: LPARAM) -> LRESULT {
-        if code == HC_ACTION {
-          let message = wParam as u32;
-          let kb = lParam as *const KBDLLHOOKSTRUCT;
-          let flags = (*kb).flags;
-          let scanCode = (*kb).scanCode;
-          let extra = (*kb).dwExtraInfo;
+      // if scanCode == 91 {
+      //     println!("yum yum!");
+      //     return 1;
+      // }
 
-          // if scanCode == 91 {
-          //     println!("yum yum!");
-          //     return 1;
-          // }
-
-          println!("kb {} {} {} {}", scanCode, flags, extra, x);
-        }
-
-        CallNextHookEx(null_mut(), code, wParam, lParam)
+      println!("kb {} {} {}", scanCode, flags, extra);
     }
 
-impl Keys for WinKb {
+    CallNextHookEx(null_mut(), code, wParam, lParam)
+}
 
-    fn install(&self) -> Result<i32, Error> {
+use crate::Handler;
 
-        let _h = unsafe { SetWindowsHookExW(WH_KEYBOARD_LL, Some(key_handler), null_mut(), 0) };
-        if _h.is_null() {
-            return Err(Error::last_os_error());
-        }
+pub fn run<TState>(_state: &mut TState, _handler: Handler<TState, ()>) -> Result<(), Error> {
+    let _h = unsafe { SetWindowsHookExW(WH_KEYBOARD_LL, Some(key_handler), null_mut(), 0) };
+    if _h.is_null() {
+        return Err(Error::last_os_error());
+    }
 
-        unsafe {
-            let mut msg: MSG = std::mem::uninitialized();
-            let mut i = 0;
+    unsafe {
+        let mut msg: MSG = std::mem::uninitialized();
+        let mut i = 0;
 
-            while GetMessageW(&mut msg, null_mut(), 0, 0) > 0 {
-                print!("message {}", i);
-                i += 1;
+        while GetMessageW(&mut msg, null_mut(), 0, 0) > 0 {
+            print!("message {}", i);
+            i += 1;
 
-                if msg.message == WM_QUIT {
-                    break;
-                }
-
-                TranslateMessage(&msg);
-                DispatchMessageW(&msg);
+            if msg.message == WM_QUIT {
+                break;
             }
 
-            print!("done {}", i);
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+        }
 
-            UnhookWindowsHookEx(_h)
-        };
+        print!("done {}", i);
 
-        return Ok(0);
-    }
+        UnhookWindowsHookEx(_h)
+    };
+
+    return Ok(());
 }
-
