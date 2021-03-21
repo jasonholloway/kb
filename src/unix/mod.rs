@@ -57,8 +57,13 @@ pub fn run(handler: &mut Handler<InputEvent>) -> Result<(), Error>
                                                     sink.write_event(&raw).unwrap();
                                                 },
 
-                                                Key(_c, _move, None) => {
-                                                    // sink.write_event(&raw).unwrap();
+                                                Key(c, m, None) => {
+																										sink.write_event(&InputEvent {
+																										    time: TimeVal::try_from(SystemTime::now()).unwrap(),
+																										    event_type: EventType::EV_KEY,
+																										    event_code: EventCode::EV_KEY(int_to_ev_key(c as u32).unwrap()),
+																										    value: match m { Up => 0, Down => 1 }
+																										}).unwrap();
                                                 },
 
                                                 _ => {}
@@ -116,8 +121,13 @@ pub fn run(handler: &mut Handler<InputEvent>) -> Result<(), Error>
                                         sink.write_event(&raw).unwrap();
                                     },
 
-                                    Key(_c, _move, None) => {
-                                        // sink.write_event(&raw).unwrap();
+                                    Key(c, m, None) => {
+																				sink.write_event(&InputEvent {
+																						time: TimeVal::try_from(SystemTime::now()).unwrap(),
+																						event_type: EventType::EV_KEY,
+																						event_code: EventCode::EV_KEY(int_to_ev_key(c as u32).unwrap()),
+																						value: match m { Up => 0, Down => 1 }
+																				}).unwrap();
                                     },
 
                                     _ => {}
