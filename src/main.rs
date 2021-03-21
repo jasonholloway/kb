@@ -89,10 +89,11 @@ where
 								println!("~DOWN!")
 						},
 						(AltShiftK, Key(37, Up, _)) => {
-								self.buff.push_back(Key(28, Up, None));
+								self.buff.push_back(Key(103, Up, None));
 								println!("~UP!")
 						},
 						(AltShiftSpace, Key(57, Up, _)) => {
+								self.buff.push_back(Key(28, Up, None));
 								println!("~RETURN!")
 						},
 
@@ -140,11 +141,12 @@ where
 								println!("DOWN!")
 						},
 						(AltShiftK, Key(37, Down, _)) => {
-								self.buff.push_back(Key(28, Down, None));
+								self.buff.push_back(Key(103, Down, None));
 								
 								println!("UP!")
 						},
 						(AltShiftSpace, Key(57, Down, _)) => {
+								self.buff.push_back(Key(28, Down, None));
 								println!("RETURN!")
 						},
 
