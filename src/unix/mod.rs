@@ -12,8 +12,9 @@ mod timer;
 enum Mode { Read, Sync }
 
 
-pub fn run(handler: &mut Handler<InputEvent>) -> Result<(), Error>
+pub fn run<'a>(create_handler: fn() -> Handler<InputEvent>) -> Result<(), Error>
 {
+    let mut handler = create_handler();
     
     let mut source = open_device("/dev/input/by-path/platform-i8042-serio-0-event-kbd")
         .unwrap();
