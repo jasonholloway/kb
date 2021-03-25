@@ -35,7 +35,7 @@ unsafe extern "system" fn key_hook(code: i32, wParam: WPARAM, lParam: LPARAM) ->
         }
     });
 
-    1
+    return CallNextHookEx(null_mut(), code, wParam, lParam);
 }
 
 thread_local! {
