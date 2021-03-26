@@ -52,8 +52,8 @@ trait Sink<T> {
 }
 
 enum Action {
-    PassThru,
-    Gobble
+    Skip,
+    Take
 }
 
 
@@ -79,7 +79,7 @@ where TRaw: Debug
                 Down => self.keys.set(code as usize, true),
             };
 
-            println!("{:?}", self.keys.into_iter().collect::<Vec<usize>>());
+            println!("{:?} {:?}", self.keys.into_iter().collect::<Vec<usize>>(), self.mode);
         }
 
         use Action::*;
@@ -118,47 +118,69 @@ where TRaw: Debug
             _ => prev_mode
         };
 
+        if next_mode != self.mode { println!("{:?}", next_mode); }
+
         let action = match (prev_mode, next_mode, &update) {
 
-            (AltShiftJ, _, Key(36, Up, _)) => {
-                println!("~DOWN!");
-                PassThru
-            },
-            (AltShiftK, _, Key(37, Up, _)) => {
-                self.buff.push_back(Key(103, Up, None));
-                println!("~UP!");
-                Gobble
+            (_, AltShiftSpace, Key(57, Down, _)) => {
+                self.buff.push_back(Key(42, Up, None));
+                self.buff.push_back(Key(56, Up, None));
+
+                self.buff.push_back(Key(28, Down, None));
+                println!("RETURN!");
+
+                self.buff.push_back(Key(42, Down, None));
+                self.buff.push_back(Key(56, Down, None));
+                Take
             },
             (AltShiftSpace, _, Key(57, Up, _)) => {
                 self.buff.push_back(Key(28, Up, None));
                 println!("~RETURN!");
-                Gobble
+                Take
             },
 
+
             (_, AltShiftJ, Key(36, Down, _)) => {
+                self.buff.push_back(Key(42, Up, None));
+                self.buff.push_back(Key(56, Up, None));
+
+                self.buff.push_back(Key(108, Down, None));
                 println!("DOWN!");
-                PassThru
+
+                self.buff.push_back(Key(42, Down, None));
+                self.buff.push_back(Key(56, Down, None));
+                Take
             },
+            (AltShiftJ, _, Key(36, Up, _)) => {
+                self.buff.push_back(Key(108, Up, None));
+                println!("~DOWN!"); 
+                Take
+            },
+
+
             (_, AltShiftK, Key(37, Down, _)) => {
                 self.buff.push_back(Key(42, Up, None));
                 self.buff.push_back(Key(56, Up, None));
+
                 self.buff.push_back(Key(103, Down, None));
                 println!("UP!");
-                Gobble
+
+                self.buff.push_back(Key(42, Down, None));
+                self.buff.push_back(Key(56, Down, None));
+                Take
             },
-            (_, AltShiftSpace, Key(57, Down, _)) => {
-                self.buff.push_back(Key(42, Up, None));
-                self.buff.push_back(Key(56, Up, None));
-                self.buff.push_back(Key(28, Down, None));
-                println!("RETURN!");
-                PassThru
+            (AltShiftK, _, Key(37, Up, _)) => {
+                self.buff.push_back(Key(103, Up, None));
+                println!("~UP!");
+                Take
             },
 
-            _ => PassThru
+
+            _ => Skip
         };
 
         match action {
-            PassThru => {
+            Skip => {
                 if let Key(_, _, raw) = &update {
                     match raw {
                         Some(_) => self.buff.push_back(update),
@@ -166,10 +188,9 @@ where TRaw: Debug
                     }
                 }
             },
-            Gobble => {}
+            Take => {}
         };
         
-        if next_mode != self.mode { println!("{:?}", next_mode); }
         self.mode = next_mode;
 
         (0, self.buff.drain(..))
