@@ -1,4 +1,7 @@
+#![allow(dead_code)]
+
 extern crate bitmaps;
+extern crate empty;
 extern crate typenum;
 
 #[cfg(unix)]
@@ -17,6 +20,7 @@ mod unix;
 
 mod common;
 mod null;
+mod machines;
 
 fn create_handler<T>() -> Handler<T> {
     Handler {
@@ -48,9 +52,9 @@ use std::fmt::Debug;
 use std::collections::vec_deque::*;
 
 
-trait Sink<T> {
-    fn emit(item: &T);
-}
+// trait Sink<T> {
+//     fn emit(item: &T);
+// }
 
 enum Action {
     Skip,
@@ -70,23 +74,28 @@ pub struct Handler<TRaw> {
 impl<TRaw> Handler<TRaw>
 where TRaw: Debug
 {
+    fn emit(&mut self, k: Update<TRaw>) {
+        self.buff.push_back(k);
+    }
 
-    fn mask_add(&mut self, codes: &[u16]) {
+    //masking should also stop masked keys being mapped afresh
+
+    fn mask(&mut self, codes: &[u16]) {
         for c in codes {
             let prev = self.mask_map.set(*c as usize, true);
 
             if !prev && self.out_map.get(*c as usize) {
-                self.buff.push_back(Key(*c, Up, None));
+                self.emit(Key(*c, Up, None));
             }
         }
     }
 
-    fn mask_reset(&mut self, codes: &[u16]) {
+    fn unmask(&mut self, codes: &[u16]) {
         for c in codes {
             let prev = self.mask_map.set(*c as usize, false);
 
             if prev && self.in_map.get(*c as usize) && !self.out_map.get(*c as usize) {
-                self.buff.push_back(Key(*c, Down, None));
+                self.emit(Key(*c, Down, None));
             }
         }
     }
@@ -94,13 +103,13 @@ where TRaw: Debug
     
     fn handle(&mut self, update: Update<TRaw>) -> (NextDue, Drain<Update<TRaw>>)
     {
-        self.count += 1;
-
-        gather_map(&update, &mut self.in_map);
-
         use Action::*;
         use Mode::*;
         use Event::*;
+
+        self.count += 1;
+
+        gather_map(&update, &mut self.in_map);
 
         let prev_mode = self.mode;
 
@@ -142,37 +151,37 @@ where TRaw: Debug
         let action = match (prev_mode, next_mode, &update) {
 
             (_, AltShiftSpace, Key(57, Down, _)) => {
-                self.mask_add(&[42, 56]);
-                self.buff.push_back(Key(28, Down, None));
+                self.mask(&[42, 56]);
+                self.emit(Key(28, Down, None));
                 Take
             },
             (AltShiftSpace, _, Key(57, Up, _)) => {
-                self.buff.push_back(Key(28, Up, None));
-                self.mask_reset(&[42, 56]);
+                self.emit(Key(28, Up, None));
+                self.unmask(&[42, 56]);
                 Take
             },
 
 
             (_, AltShiftJ, Key(36, Down, _)) => {
-                self.mask_add(&[42, 56]);
-                self.buff.push_back(Key(108, Down, None));
+                self.mask(&[42, 56]);
+                self.emit(Key(108, Down, None));
                 Take
             },
             (AltShiftJ, _, Key(36, Up, _)) => {
-                self.buff.push_back(Key(108, Up, None));
-                self.mask_reset(&[42, 56]);
+                self.emit(Key(108, Up, None));
+                self.unmask(&[42, 56]);
                 Take
             },
 
 
             (_, AltShiftK, Key(37, Down, _)) => {
-                self.mask_add(&[42, 56]); //should do this on entry/exit rather than each keypress
-                self.buff.push_back(Key(103, Down, None));
+                self.mask(&[42, 56]); //should do this on entry/exit rather than each keypress
+                self.emit(Key(103, Down, None));
                 Take
             },
             (AltShiftK, _, Key(37, Up, _)) => {
-                self.buff.push_back(Key(103, Up, None));
-                self.mask_reset(&[42, 56]);
+                self.emit(Key(103, Up, None));
+                self.unmask(&[42, 56]);
                 Take
             },
 
@@ -183,7 +192,7 @@ where TRaw: Debug
             Skip => {
                 if let Key(_, _, raw) = &update {
                     match raw {
-                        Some(_) => self.buff.push_back(update),
+                        Some(_) => self.emit(update),
                         None => {}
                     }
                 }
@@ -278,8 +287,6 @@ fn gather_map<T, T2: Bits>(event: &Update<T>, map: &mut Bitmap<T2>) {
 
 #[cfg(test)]
 mod tests {
-
-    use super::*;
 
     #[test]
     fn test_something() {

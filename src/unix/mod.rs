@@ -49,7 +49,7 @@ pub fn run<'a>(create_handler: fn() -> Handler<InputEvent>) -> Result<(), Error>
                                         _ => return Err(Error::new(InvalidData, "strange event value"))
                                     };
                                     
-                                    let (_nextDue, emitted) = handler.handle(update);
+                                    let (_next_due, emitted) = handler.handle(update);
 
                                     if emitted.len() > 0 {
                                         for e in emitted {
@@ -113,7 +113,7 @@ pub fn run<'a>(create_handler: fn() -> Handler<InputEvent>) -> Result<(), Error>
                     Some(libc::EINTR) => {
                         use crate::Update::*;
                         
-                        let (_nextDue, emitted) = handler.handle(Tick);
+                        let (_next_due, emitted) = handler.handle(Tick);
 
                         if emitted.len() > 0 {
                             for e in emitted {

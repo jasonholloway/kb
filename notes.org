@@ -1,0 +1,216 @@
+
+if it's a special modifier key, then the key is held down, and is always part of the chord
+
+a normal key however, can be held down, but if it isn't the latest, and isn't repeating, it is unnoticable
+
+two modes therefore, either backgrounded, ambiently available; or like a machine gun on a turret
+
+this is the underlying key model; on top of it we want our own state machines
+we want to be able to specify our own modifiers
+
+alt and shift go together quite nicely as existing modifiers
+but what about D,F? if depressed together, then we have a new modifier combo, made modifiers because their effect is remembered and applied
+
+
+we hold D,F... then we release D... we shouldn't start repeating F without a further gesture towads it - and that is exactly what we get anyway, which is nice
+
+
+--------
+
+Modes should be expressible in more basic terms
+
+if it's a mode key, we don't leap from it's state to another, it is maintained across lead keys
+and it's not a mode 'key', but a mode 'state', as DF isn't a key, but a state to be entered
+
+with DF pressed, we enter transient lead modes - DFE -> DFR etc
+
+but then if we remove F, the mode goes, and we shouldn't actually re-press the D, as that would be problematic
+
+--------
+
+Keys lead to States, and it is the State that is a mode.
+
+D=KEY(34)
+F=KEY(35)
+
+D {
+  F {
+	  DF
+	}
+}
+
+DF : Mode {
+  
+}
+
+---------
+
+A mode is though just a special state, or a state with some predefined behaviours
+
+some modes mask up front (DF would have to, via a timer)
+while others would retransmit the incoming keys (eg Alt, Shift that are modes for other downstream aggregators)
+
+so it's not the masking that makes a mode
+it's that the mode isn't destroyed by other keys, but lurks
+
+lead keys supercede each other 
+whereas modes combine into bigger modes
+
+C-M-x does not contain M-x or C-x 
+you can't have two separate co-existing, they greedily merge
+
+--------
+
+but in our interceptor, we won't be mapping the modes of downstream layers, which will look after themselves
+
+if we don't say that Alt greedily combines with Shift or DF, then it will be treated as an ordinary key
+(though it makes sense to set it up like that as a default)
+
+--------
+
+without the mode, states don't interact
+though conditions always have orders
+
+Alt {
+  Shift {
+	  AltShift
+	}
+}
+
+Shift {
+  Alt {
+		AltShift
+	}
+}
+
+but the absolute best representation is of a graph, rather than a series of pyramids like this
+
+although it's a graph constrained by us only being able to release by the path we pressed
+most basically, there is an on/off machine for each key
+this does the constraining, modes are built as a superstructure on this
+
+and if we were to render this efficient, each key machine would be hooked via handlers to update the superstructure of states
+as we are representing above - the separate paths to the same shared state are pragmatic, not ideal
+
+-----------
+
+Ideally, then, each super state floats by itself, with paths in and out
+
+alt=key(42)
+shift=key(56)
+space=key(57)
+
+Root {
+  (+alt) > Alt
+  (+shift) > Shift
+}
+
+Alt {
+  (+shift) > AltShift
+  (-alt) > Root
+}
+
+Shift {
+  (+alt) > AltShift
+  (-shift) > Root
+}
+
+AltShift {
+  (+space) > AltShiftSpace
+  (-alt) > Shift
+  (-shift) > Alt
+}
+
+AltShiftSpace {
+  (-space) > AltShift
+  (-alt) > Shift
+  (-shift) > Alt
+}
+
+-------------
+
+and then as we enter and exit states, different things occur
+which is pretty much like our current code
+
+
+each key machine has its own state - a single bit.
+
+mode state is itself a single machine, responding to changes in the key machines
+(this is how Alt and Shift clump together so happily)
+
+then the lead machine gets chance to do its thing
+
+so we have three layers of machines - or rather three machines, one after the other
+
+expressible more atomically, we are supporting multiple machines, whose events and changes trigger changes in downstream machines
+this downstream flow is in terms of raw key events, as well as intermediate state changes, all of which gather into a frame of changes that can be bound to below
+
+our DSL then needs some concept of this percolation:
+firstly raw keys become KeyChanges, which percolate into and through ModeChanges, which percolate into and through LeadChanges
+
+our DSL needs layer separators
+
+-------------
+
+
+. {
+  (+42) > KAlt
+}
+
+KAlt {
+  (-42) > .
+}
+
+-------------------
+
+. {
+  (+56) > KShift
+}
+
+KShift {
+  (-56) > .
+}
+
+-------------------
+
+. {
+  (+KAlt) > MAlt
+  (+KShift) > MShift
+}
+
+MAlt {
+  (+KShift) > MAltShift
+  (-KAlt) > .
+}
+
+MShift {
+  (+KAlt) > MAltShift
+  (-KShift) > .
+}
+
+MAltShift {
+  (-KAlt) > MShift
+  (-KShift) > MAlt
+}
+
+---------------------
+
+. {
+  (+MAltShift) >AltShiftSpace
+}
+
+AltShiftSpace {
+  (+57) emit +28
+  (-57) emit -28; > blah
+  (-MAltShift) >.
+}
+
+
+---------------------------------------------
+
+
+to achieve the above, need machines in a list, with a ring buffer uniting them;
+all events in the buffer need to be drained into the new machine
+
+each machine has a run function that reads from the input buffer, and emits to an output buffer
+

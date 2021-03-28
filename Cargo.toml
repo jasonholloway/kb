@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 cfg-if = "1.0.0"
 bitmaps = "2.1.0"
+empty = "0.0.4"
 typenum = "1.11.2"
 
 [target.'cfg(windows)'.dependencies]
