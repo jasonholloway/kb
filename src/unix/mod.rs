@@ -1,10 +1,10 @@
-use std::{fs::File, io::{Error,ErrorKind::*}};
+use std::{collections::VecDeque, fs::File, io::{Error,ErrorKind::*}};
 use std::time::SystemTime;
 use std::convert::TryFrom;
 use std::time::Duration;
 use evdev_rs::*;
 use evdev_rs::enums::*;
-use crate::{Update::*,Movement::*,Handler};
+use crate::{Movement::*, Update::*, common::Update, machines::Runnable};
 
 mod dev_info;
 mod timer;
@@ -12,9 +12,9 @@ mod timer;
 enum Mode { Read, Sync }
 
 
-pub fn run<'a>(create_handler: fn() -> Handler<InputEvent>) -> Result<(), Error>
+pub fn run<'a, TRun: Runnable<Update<InputEvent>>>(runnable: &mut TRun) -> Result<(), Error>
 {
-    let mut handler = create_handler();
+    let mut buff = VecDeque::new();
     
     let mut source = open_device("/dev/input/by-path/platform-i8042-serio-0-event-kbd")
         .unwrap();
@@ -48,11 +48,11 @@ pub fn run<'a>(create_handler: fn() -> Handler<InputEvent>) -> Result<(), Error>
                                         2 => Key(code, Down, Some(ev)),
                                         _ => return Err(Error::new(InvalidData, "strange event value"))
                                     };
-                                    
-                                    let (_next_due, emitted) = handler.handle(update);
 
-                                    if emitted.len() > 0 {
-                                        for e in emitted {
+                                    runnable.run(update, &mut buff);
+
+                                    if !buff.is_empty() {
+                                        for e in buff.drain(0..) {
                                             match e {
                                                 Key(_, _, Some(raw)) => {
                                                     sink.write_event(&raw).unwrap();
@@ -112,11 +112,11 @@ pub fn run<'a>(create_handler: fn() -> Handler<InputEvent>) -> Result<(), Error>
                 match err.raw_os_error() {
                     Some(libc::EINTR) => {
                         use crate::Update::*;
-                        
-                        let (_next_due, emitted) = handler.handle(Tick);
 
-                        if emitted.len() > 0 {
-                            for e in emitted {
+                        runnable.run(Tick, &mut buff);
+
+                        if !buff.is_empty() {
+                            for e in buff.drain(0..) {
                                 match e {
                                     Key(_, _, Some(raw)) => {
                                         sink.write_event(&raw).unwrap();
