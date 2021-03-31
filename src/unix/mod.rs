@@ -11,12 +11,14 @@ mod timer;
 
 enum Mode { Read, Sync }
 
+const DEV_PATH: &str = "/dev/input/event18";
+// "/dev/input/by-path/platform-i8042-serio-0-event-kbd"
 
 pub fn run<'a, TRun: Runnable<Update<InputEvent>>>(runnable: &mut TRun) -> Result<(), Error>
 {
     let mut buff = VecDeque::new();
     
-    let mut source = open_device("/dev/input/by-path/platform-i8042-serio-0-event-kbd")
+    let mut source = open_device(DEV_PATH)
         .unwrap();
 
     source.grab(GrabMode::Grab).unwrap();
@@ -33,7 +35,7 @@ pub fn run<'a, TRun: Runnable<Update<InputEvent>>>(runnable: &mut TRun) -> Resul
             Mode::Read => source
                 .next_event(ReadFlag::NORMAL | ReadFlag::BLOCKING)
                 .and_then(|(status, ev)| {
-                    // event_info(&ev);
+                    //event_info(&ev);
                     match status {
                         ReadStatus::Success => {
                             match ev.event_code {

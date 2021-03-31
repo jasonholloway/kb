@@ -33,23 +33,23 @@ impl<'a, TEv> Runner<TEv> {
     }
 }
 
-impl<TEv> Runnable<TEv> for Runner<TEv> {
+impl<TEv: std::fmt::Debug> Runnable<TEv> for Runner<TEv> {
     
     fn run<TSink: Sink<TEv>>(&mut self, ev: TEv, sink: &mut TSink) -> () {
-        let mut buff1 = &mut self.buff1;
-        let mut buff2 = &mut self.buff2;
+        let mut input = &mut self.buff1;
+        let mut output = &mut self.buff2;
 
-        buff1.push_back(ev);
+        input.push_back(ev);
         
         for m in self.machines.iter_mut() {
-            buff2.extend(buff1.drain(0..));
-            
-            for e in buff2.drain(0..) {
-                m.run(e, buff1);
+            for e in input.drain(0..) {
+                m.run(e, output);
             }
+         
+            input.extend(output.drain(0..));
         }
 
-        sink.emit_many(buff1.drain(0..));
+        sink.emit_many(input.drain(0..));
     }
 }
 
