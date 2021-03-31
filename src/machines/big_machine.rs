@@ -52,20 +52,20 @@ impl Machine1 {
 
     fn mask<TRaw, TSink: Sink<Update<TRaw>>>(&mut self, codes: &[u16], sink: &mut TSink) {
         for c in codes {
-            let prev = self.mask_map.set(*c as usize, true);
+            let maskable = !self.mask_map.set(*c as usize, true);
 
-            if !prev && self.out_map.get(*c as usize) {
-                sink.emit(Key(*c, Up, None));
+            if maskable && self.out_map.get(*c as usize) {
+                self.emit(Key(*c, Up, None), sink);
             }
         }
     }
 
     fn unmask<TRaw, TSink: Sink<Update<TRaw>>>(&mut self, codes: &[u16], sink: &mut TSink) {
         for c in codes {
-            let prev = self.mask_map.set(*c as usize, false);
+            let unmaskable = self.mask_map.set(*c as usize, false);
 
-            if prev && self.in_map.get(*c as usize) && !self.out_map.get(*c as usize) {
-                sink.emit(Key(*c, Down, None));
+            if unmaskable && self.in_map.get(*c as usize) && !self.out_map.get(*c as usize) {
+                self.emit(Key(*c, Down, None), sink);
             }
         }
     }
