@@ -1,11 +1,8 @@
-use bitmaps::{Bitmap, Bits};
 use std::fmt::Debug;
-use typenum::*;
-
-use crate::{Event, common::{Movement::*, *}, sink::Sink};
+use crate::{common::{Movement::*, *}, sink::Sink};
 use Update::*;
 use crate::Action::*;
-use super::Machine;
+use super::{CanEmit, CanMask, HasMaps, Machine, key_maps::KeyMaps, gather_map};
 
 
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -20,70 +17,36 @@ enum Mode {
 }
 
 
-
-fn gather_map<T, T2: Bits>(event: &Update<T>, map: &mut Bitmap<T2>) {
-    if let Key(code, movement, _) = event {
-        match movement {
-            Up => map.set(*code as usize, false),
-            Down => map.set(*code as usize, true),
-        };
-    }
-}
-
-
-pub struct Machine1 {
-    count: u32,
-    in_map: Bitmap<U1024>,
-    out_map: Bitmap<U1024>,
-    mask_map: Bitmap<U1024>,
+pub struct BigMachine {
     mode: Mode,
+    maps: KeyMaps,
 }
 
-impl Machine1 {
-    pub fn new() -> Machine1 {
-        Machine1 {
-            count: 0,
-            in_map: Bitmap::new(),
-            out_map: Bitmap::new(),
-            mask_map: Bitmap::new(),
-            mode: Mode::Root
+impl BigMachine {
+    pub fn new() -> BigMachine {
+        BigMachine {
+            mode: Mode::Root,
+            maps: KeyMaps::new(),
         }
-    }
-
-    fn mask<TRaw, TSink: Sink<Update<TRaw>>>(&mut self, codes: &[u16], sink: &mut TSink) {
-        for c in codes {
-            let maskable = !self.mask_map.set(*c as usize, true);
-
-            if maskable && self.out_map.get(*c as usize) {
-                self.emit(Key(*c, Up, None), sink);
-            }
-        }
-    }
-
-    fn unmask<TRaw, TSink: Sink<Update<TRaw>>>(&mut self, codes: &[u16], sink: &mut TSink) {
-        for c in codes {
-            let unmaskable = self.mask_map.set(*c as usize, false);
-
-            if unmaskable && self.in_map.get(*c as usize) && !self.out_map.get(*c as usize) {
-                self.emit(Key(*c, Down, None), sink);
-            }
-        }
-    }
-
-    fn emit<TRaw, TSink: Sink<Update<TRaw>>>(&mut self, ev: Update<TRaw>, sink: &mut TSink) {
-        gather_map(&ev, &mut self.out_map);
-        sink.emit(ev);
     }
 }
 
-impl<TRaw: Debug, TSink: Sink<Update<TRaw>>> Machine<Update<TRaw>, TSink> for Machine1 {
+impl HasMaps for BigMachine {
+    fn maps(&mut self) -> &mut KeyMaps {
+        &mut self.maps
+    }
+}
+
+impl<TRaw, TSink> Machine<Update<TRaw>, TSink>
+    for BigMachine
+where
+    TRaw: Debug,
+    TSink: Sink<Update<TRaw>> {
 
     fn run<'a>(&mut self, ev: Update<TRaw>, sink: &'a mut TSink) -> () {
         use Mode::*;
-
-        self.count += 1;
         
-        gather_map(&ev, &mut self.in_map);
+        gather_map(&ev, &mut self.maps.inp);
 
         let prev_mode = self.mode;
 
@@ -180,59 +143,42 @@ impl<TRaw: Debug, TSink: Sink<Update<TRaw>>> Machine<Update<TRaw>, TSink> for Ma
 
 
 
-pub struct PrintKeys {
-    out_map: Bitmap<U1024>,
-    tabs: u8,
-    colour: u8
-}
 
-impl PrintKeys {
-    pub fn new(tabs: u8, colour: u8) -> PrintKeys {
-        PrintKeys {
-            out_map: Bitmap::new(),
-            tabs,
-            colour
+impl<TRaw, TSink, TSelf> CanMask<Update<TRaw>, TSink>
+    for TSelf
+where
+    TSelf: HasMaps,
+    TSink: Sink<Update<TRaw>> {
+    
+    fn mask(&mut self, codes: &[u16], sink: &mut TSink) {
+        for c in codes {
+            let maskable = !self.maps().mask.set(*c as usize, true);
+
+            if maskable && self.maps().outp.get(*c as usize) {
+                self.emit(Key(*c, Up, None), sink);
+            }
         }
     }
 
-    fn print<TRaw>(&self, ev: &Update<TRaw>) {
-        use Update::*;
-        
-        let new_code = if let Key(c, _, _) = ev { *c } else { 0 as u16 };
+    fn unmask(&mut self, codes: &[u16], sink: &mut TSink) {
+        for c in codes {
+            let unmaskable = self.maps().mask.set(*c as usize, false);
 
-        print!("{}", (0..self.tabs).map(|_| '\t').collect::<String>());
-        
-        print!("[");
-        let mut first = true;
-        for c in self.out_map.into_iter() {
-            if !first {
-              print!(", ");
+            if unmaskable && self.maps().inp.get(*c as usize) && !self.maps().outp.get(*c as usize) {
+                self.emit(Key(*c, Down, None), sink);
             }
-
-            if c == new_code as usize {
-                print!("\x1b[0;{:?}m{:?}\x1b[0m", self.colour, c);
-            } else {
-                print!("{:?}", c);
-            }
-
-            first = false;
         }
-        print!("]\t\t");
-        println!();
     }
 }
 
-impl<TRaw: Debug, TSink: Sink<Update<TRaw>>> Machine<Update<TRaw>, TSink> for PrintKeys {
+impl<TRaw, TSink, TSelf> CanEmit<Update<TRaw>, TSink>
+    for TSelf
+where
+    TSelf: HasMaps,
+    TSink: Sink<Update<TRaw>> {
 
-    fn run(&mut self, ev: Update<TRaw>, sink: &mut TSink) -> () {
-        gather_map(&ev, &mut self.out_map);
-
-        if let Key(_, _, _) = ev {
-            self.print(&ev);
-        }
-
+    fn emit(&mut self, ev: Update<TRaw>, sink: &mut TSink) {
+        gather_map(&ev, &mut self.maps().outp);
         sink.emit(ev);
     }
-
 }
-

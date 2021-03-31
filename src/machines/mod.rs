@@ -2,9 +2,13 @@
 #![allow(unused_mut)]
 
 use std::collections::vec_deque::*;
-use crate::sink::*;
+use bitmaps::{Bitmap,Bits};
+use crate::{common::Update, common::Update::*, sink::*};
+use self::key_maps::KeyMaps;
 
 pub mod big_machine;
+pub mod print_keys;
+pub mod key_maps;
 
 
 pub trait Runnable<TEv> {
@@ -14,6 +18,20 @@ pub trait Runnable<TEv> {
 pub trait Machine<TEv, TSink: Sink<TEv>> {
     fn run(&mut self, ev: TEv, sink: &mut TSink) -> ();
 }
+
+pub trait HasMaps {
+    fn maps(&mut self) -> &mut KeyMaps;
+}
+
+pub trait CanMask<TEv, TSink: Sink<TEv>> : HasMaps {
+    fn mask(&mut self, codes: &[u16], sink: &mut TSink);
+    fn unmask(&mut self, codes: &[u16], sink: &mut TSink);
+}
+
+pub trait CanEmit<TEv, TSink: Sink<TEv>> {
+    fn emit(&mut self, ev: TEv, sink: &mut TSink);
+}
+
 
 
 
@@ -50,6 +68,18 @@ impl<TEv: std::fmt::Debug> Runnable<TEv> for Runner<TEv> {
         }
 
         sink.emit_many(input.drain(0..));
+    }
+}
+
+
+pub fn gather_map<T, T2: Bits>(event: &Update<T>, map: &mut Bitmap<T2>) {
+    use super::Movement::*;
+    
+    if let Key(code, movement, _) = event {
+        match movement {
+            Up => map.set(*code as usize, false),
+            Down => map.set(*code as usize, true),
+        };
     }
 }
 
