@@ -11,8 +11,8 @@ mod timer;
 
 enum Mode { Read, Sync }
 
-const DEV_PATH: &str = "/dev/input/event18";
-// "/dev/input/by-path/platform-i8042-serio-0-event-kbd"
+// const DEV_PATH: &str = "/dev/input/event18";
+const DEV_PATH: &str = "/dev/input/by-path/platform-i8042-serio-0-event-kbd";
 
 pub fn run<'a, TRun: Runnable<Update<InputEvent>>>(runnable: &mut TRun) -> Result<(), Error>
 {

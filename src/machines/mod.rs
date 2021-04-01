@@ -6,14 +6,11 @@ use bitmaps::{Bitmap,Bits};
 use crate::{common::Update, common::Update::*, sink::*};
 use self::key_maps::KeyMaps;
 
-pub mod big_machine;
-pub mod print_keys;
 pub mod key_maps;
+pub mod print_keys;
+pub mod mode_machine;
+pub mod big_machine;
 
-
-pub trait Runnable<TEv> {
-    fn run<TSink: Sink<TEv>>(&mut self, ev: TEv, sink: &mut TSink) -> ();
-}
 
 pub trait Machine<TEv, TSink: Sink<TEv>> {
     fn run(&mut self, ev: TEv, sink: &mut TSink) -> ();
@@ -34,6 +31,12 @@ pub trait CanEmit<TEv, TSink: Sink<TEv>> {
 
 
 
+
+
+
+pub trait Runnable<TEv> {
+    fn run<TSink: Sink<TEv>>(&mut self, ev: TEv, sink: &mut TSink) -> ();
+}
 
 pub struct Runner<TEv> {
     machines: Vec<Box<dyn Machine<TEv, VecDeque<TEv>>>>,
@@ -118,4 +121,46 @@ mod machines_tests {
         assert_eq!(sink.len(), 2 * 3 * 4 * 5 * 6 * 7)
     }
 
+}
+
+
+use super::Movement::*;
+
+impl<TRaw, TSink, TSelf> CanMask<Update<TRaw>, TSink>
+    for TSelf
+where
+    TSelf: HasMaps,
+    TSink: Sink<Update<TRaw>> {
+    
+    fn mask(&mut self, codes: &[u16], sink: &mut TSink) {
+        for c in codes {
+            let maskable = !self.maps().mask.set(*c as usize, true);
+
+            if maskable && self.maps().outp.get(*c as usize) {
+                self.emit(Key(*c, Up, None), sink);
+            }
+        }
+    }
+
+    fn unmask(&mut self, codes: &[u16], sink: &mut TSink) {
+        for c in codes {
+            let unmaskable = self.maps().mask.set(*c as usize, false);
+
+            if unmaskable && self.maps().inp.get(*c as usize) && !self.maps().outp.get(*c as usize) {
+                self.emit(Key(*c, Down, None), sink);
+            }
+        }
+    }
+}
+
+impl<TRaw, TSink, TSelf> CanEmit<Update<TRaw>, TSink>
+    for TSelf
+where
+    TSelf: HasMaps,
+    TSink: Sink<Update<TRaw>> {
+
+    fn emit(&mut self, ev: Update<TRaw>, sink: &mut TSink) {
+        gather_map(&ev, &mut self.maps().outp);
+        sink.emit(ev);
+    }
 }

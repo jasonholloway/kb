@@ -7,7 +7,7 @@ extern crate typenum;
 extern crate libc;
 
 use common::*;
-use machines::{Runner, big_machine::BigMachine, print_keys::PrintKeys};
+use machines::{Runner, big_machine::BigMachine, mode_machine::ModeMachine, print_keys::PrintKeys};
 use std::fmt::Debug;
 
 #[cfg(windows)]
@@ -38,6 +38,7 @@ pub fn main() {
 fn create_runner<TRaw: 'static + Debug>() -> Runner<Update<TRaw>> {
     Runner::<Update<TRaw>>::new(vec!(
         Box::from(PrintKeys::new(1, 31)),
+        Box::from(ModeMachine::new()),
         Box::from(BigMachine::new()),
         Box::from(PrintKeys::new(3, 32)),
     ))
