@@ -1,25 +1,30 @@
-use std::{collections::VecDeque, fs::File, io::{Error,ErrorKind::*}};
-use std::time::SystemTime;
+use crate::{common::Update, machines::Runnable, Movement::*, Update::*};
+use evdev_rs::enums::*;
+use evdev_rs::*;
 use std::convert::TryFrom;
 use std::time::Duration;
-use evdev_rs::*;
-use evdev_rs::enums::*;
-use crate::{Movement::*, Update::*, common::Update, machines::Runnable};
+use std::time::SystemTime;
+use std::{
+    collections::VecDeque,
+    fs::File,
+    io::{Error, ErrorKind::*},
+};
 
 mod dev_info;
 mod timer;
 
-enum Mode { Read, Sync }
+enum Mode {
+    Read,
+    Sync,
+}
 
 // const DEV_PATH: &str = "/dev/input/event18";
 const DEV_PATH: &str = "/dev/input/by-path/platform-i8042-serio-0-event-kbd";
 
-pub fn run<'a, TRun: Runnable<Update<InputEvent>>>(runnable: &mut TRun) -> Result<(), Error>
-{
+pub fn run<'a, TRun: Runnable<Update<InputEvent>>>(runnable: &mut TRun) -> Result<(), Error> {
     let mut buff = VecDeque::new();
-    
-    let mut source = open_device(DEV_PATH)
-        .unwrap();
+
+    let mut source = open_device(DEV_PATH).unwrap();
 
     source.grab(GrabMode::Grab).unwrap();
 
@@ -37,127 +42,133 @@ pub fn run<'a, TRun: Runnable<Update<InputEvent>>>(runnable: &mut TRun) -> Resul
                 .and_then(|(status, ev)| {
                     //event_info(&ev);
                     match status {
-                        ReadStatus::Success => {
-                            match ev.event_code {
+                        ReadStatus::Success => match ev.event_code {
+                            EventCode::EV_KEY(_) => {
+                                let code = ev.as_raw().code;
 
-                                EventCode::EV_KEY(_) => {
+                                let update = match ev.value {
+                                    0 => Key(code, Up, Some(ev)),
+                                    1 => Key(code, Down, Some(ev)),
+                                    2 => Key(code, Down, Some(ev)),
+                                    _ => {
+                                        return Err(Error::new(InvalidData, "strange event value"))
+                                    }
+                                };
 
-                                    let code = ev.as_raw().code;
+                                runnable.run(update, &mut buff);
 
-                                    let update = match ev.value {
-                                        0 => Key(code, Up, Some(ev)),
-                                        1 => Key(code, Down, Some(ev)),
-                                        2 => Key(code, Down, Some(ev)),
-                                        _ => return Err(Error::new(InvalidData, "strange event value"))
-                                    };
-
-                                    runnable.run(update, &mut buff);
-
-                                    if !buff.is_empty() {
-                                        for e in buff.drain(0..) {
-                                            match e {
-                                                Key(_, _, Some(raw)) => {
-                                                    sink.write_event(&raw).unwrap();
-                                                },
-
-                                                Key(c, m, None) => {
-																										sink.write_event(&InputEvent {
-																										    time: TimeVal::try_from(SystemTime::now()).unwrap(),
-																										    event_type: EventType::EV_KEY,
-																										    event_code: EventCode::EV_KEY(int_to_ev_key(c as u32).unwrap()),
-																										    value: match m { Up => 0, Down => 1 }
-																										}).unwrap();
-                                                },
-
-                                                _ => {}
+                                if !buff.is_empty() {
+                                    for e in buff.drain(0..) {
+                                        match e {
+                                            Key(_, _, Some(raw)) => {
+                                                sink.write_event(&raw).unwrap();
                                             }
-                                        }
 
-                                        sink.write_event(&InputEvent {
-                                            time: TimeVal::try_from(SystemTime::now()).unwrap(),
-                                            event_type: EventType::EV_SYN,
-                                            event_code: EventCode::EV_SYN(EV_SYN::SYN_REPORT),
-                                            value: 0
-                                        }).unwrap();
+                                            Key(c, m, None) => {
+                                                sink.write_event(&InputEvent {
+                                                    time: TimeVal::try_from(SystemTime::now())
+                                                        .unwrap(),
+                                                    event_type: EventType::EV_KEY,
+                                                    event_code: EventCode::EV_KEY(
+                                                        int_to_ev_key(c as u32).unwrap(),
+                                                    ),
+                                                    value: match m {
+                                                        Up => 0,
+                                                        Down => 1,
+                                                    },
+                                                })
+                                                .unwrap();
+                                            }
+
+                                            _ => {}
+                                        }
                                     }
 
-                                    Ok(Mode::Read)
-                                }, 
-
-                                EventCode::EV_MSC(EV_MSC::MSC_SCAN) => Ok(Mode::Read),
-
-                                _ => {
-                                    sink.write_event(&ev).unwrap();
-                                    Ok(Mode::Read)
+                                    sink.write_event(&InputEvent {
+                                        time: TimeVal::try_from(SystemTime::now()).unwrap(),
+                                        event_type: EventType::EV_SYN,
+                                        event_code: EventCode::EV_SYN(EV_SYN::SYN_REPORT),
+                                        value: 0,
+                                    })
+                                    .unwrap();
                                 }
-                            }
-                        }
 
-                        ReadStatus::Sync => Ok(Mode::Sync)
+                                Ok(Mode::Read)
+                            }
+
+                            EventCode::EV_MSC(EV_MSC::MSC_SCAN) => Ok(Mode::Read),
+
+                            _ => {
+                                sink.write_event(&ev).unwrap();
+                                Ok(Mode::Read)
+                            }
+                        },
+
+                        ReadStatus::Sync => Ok(Mode::Sync),
                     }
                 }),
 
-            Mode::Sync => source
-                .next_event(ReadFlag::SYNC)
-                .and_then(|(status, _)| {
-                    println!("SYNC!");
-                    match status {
-                        ReadStatus::Sync => Ok(Mode::Sync),
-                        _ => Ok(Mode::Read)
-                    }
-                })
-          };
+            Mode::Sync => source.next_event(ReadFlag::SYNC).and_then(|(status, _)| {
+                println!("SYNC!");
+                match status {
+                    ReadStatus::Sync => Ok(Mode::Sync),
+                    _ => Ok(Mode::Read),
+                }
+            }),
+        };
 
         match res {
-            Result::Err(err) => {
+            Result::Err(err) => match err.raw_os_error() {
+                Some(libc::EINTR) => {
+                    use crate::Update::*;
 
-                match err.raw_os_error() {
-                    Some(libc::EINTR) => {
-                        use crate::Update::*;
+                    runnable.run(Tick, &mut buff);
 
-                        runnable.run(Tick, &mut buff);
-
-                        if !buff.is_empty() {
-                            for e in buff.drain(0..) {
-                                match e {
-                                    Key(_, _, Some(raw)) => {
-                                        sink.write_event(&raw).unwrap();
-                                    },
-
-                                    Key(c, m, None) => {
-																				sink.write_event(&InputEvent {
-																						time: TimeVal::try_from(SystemTime::now()).unwrap(),
-																						event_type: EventType::EV_KEY,
-																						event_code: EventCode::EV_KEY(int_to_ev_key(c as u32).unwrap()),
-																						value: match m { Up => 0, Down => 1 }
-																				}).unwrap();
-                                    },
-
-                                    _ => {}
+                    if !buff.is_empty() {
+                        for e in buff.drain(0..) {
+                            match e {
+                                Key(_, _, Some(raw)) => {
+                                    sink.write_event(&raw).unwrap();
                                 }
+
+                                Key(c, m, None) => {
+                                    sink.write_event(&InputEvent {
+                                        time: TimeVal::try_from(SystemTime::now()).unwrap(),
+                                        event_type: EventType::EV_KEY,
+                                        event_code: EventCode::EV_KEY(
+                                            int_to_ev_key(c as u32).unwrap(),
+                                        ),
+                                        value: match m {
+                                            Up => 0,
+                                            Down => 1,
+                                        },
+                                    })
+                                    .unwrap();
+                                }
+
+                                _ => {}
                             }
-
-                            sink.write_event(&InputEvent {
-                                time: TimeVal::try_from(SystemTime::now()).unwrap(),
-                                event_type: EventType::EV_SYN,
-                                event_code: EventCode::EV_SYN(EV_SYN::SYN_REPORT),
-                                value: 0
-                            }).unwrap();
                         }
-                        
-                        continue;
-                    },
 
-                    Some(libc::EAGAIN) => {
-                        continue
-                    },
-
-                    _ => {
-                        println!("ERROR! {}", err);
-                        break;
+                        sink.write_event(&InputEvent {
+                            time: TimeVal::try_from(SystemTime::now()).unwrap(),
+                            event_type: EventType::EV_SYN,
+                            event_code: EventCode::EV_SYN(EV_SYN::SYN_REPORT),
+                            value: 0,
+                        })
+                        .unwrap();
                     }
+
+                    continue;
                 }
-            }
+
+                Some(libc::EAGAIN) => continue,
+
+                _ => {
+                    println!("ERROR! {}", err);
+                    break;
+                }
+            },
 
             Result::Ok(next) => {
                 mode = next;
@@ -169,8 +180,6 @@ pub fn run<'a, TRun: Runnable<Update<InputEvent>>>(runnable: &mut TRun) -> Resul
     Ok(())
 }
 
-
-fn open_device(path: &str) -> Result<Device, Error>
-{
+fn open_device(path: &str) -> Result<Device, Error> {
     return Device::new_from_fd(File::open(&path).unwrap());
 }

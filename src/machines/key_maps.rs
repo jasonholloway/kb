@@ -1,4 +1,4 @@
-use bitmaps::{Bitmap};
+use bitmaps::Bitmap;
 use typenum::*;
 
 pub struct KeyMaps {
@@ -16,4 +16,3 @@ impl KeyMaps {
         }
     }
 }
-

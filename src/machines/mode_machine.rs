@@ -1,18 +1,20 @@
+use super::{gather_map, key_maps::KeyMaps, CanEmit, HasMaps, Machine};
+use crate::common::{Act::*, Mode, Mode::*};
+use crate::{
+    common::{Movement::*, *},
+    sink::Sink,
+};
 use std::fmt::Debug;
-use crate::{common::{Movement::*, *}, sink::Sink};
-use super::{CanEmit, HasMaps, Machine, key_maps::KeyMaps, gather_map};
-
-
 
 pub struct ModeMachine {
-    mode: &'static str,
+    mode: Mode,
     maps: KeyMaps,
 }
 
 impl ModeMachine {
     pub fn new() -> ModeMachine {
         ModeMachine {
-            mode: ".",
+            mode: Root,
             maps: KeyMaps::new(),
         }
     }
@@ -24,61 +26,62 @@ impl HasMaps for ModeMachine {
     }
 }
 
-
-pub enum Act {
-    Mode(&'static str)
-}
-
-
-
-impl<TRaw, TSink> Machine<Update<TRaw>, TSink>
-    for ModeMachine
+impl<TRaw, TSink> Machine<Update<TRaw>, TSink> for ModeMachine
 where
     TRaw: Debug,
-    TSink: Sink<Update<TRaw>> {
-
+    TSink: Sink<Update<TRaw>>,
+{
     fn run<'a>(&mut self, ev: Update<TRaw>, sink: &'a mut TSink) -> () {
         use Update::*;
-        use Act::*;
-        
+
         gather_map(&ev, &mut self.maps.inp);
 
-        let prev_mode = self.mode;
+        let next = match (self.mode, &ev) {
+            (Root, Key(42, Down, _)) => [Then(Mode("MShift"))].iter(),
+            (Root, Key(56, Down, _)) => [Then(Mode("MAlt"))].iter(),
 
-        let next = match (prev_mode, &ev) {
-            (".", Key(42, Down, _)) => [Mode("Shift")].iter(),
-            (".", Key(56, Down, _)) => [Mode("Alt")].iter(),
+            (Mode("MShift"), Key(42, Up, _)) => [Then(Root)].iter(),
+            (Mode("MShift"), Key(56, Down, _)) => [Then(Mode("MAltShift"))].iter(),
 
-            ("Shift", Key(42, Up, _)) => [Mode(".")].iter(),
-            ("Shift", Key(56, Down, _)) => [Mode("AltShift")].iter(),
+            (Mode("MAlt"), Key(56, Up, _)) => [Then(Root)].iter(),
+            (Mode("MAlt"), Key(42, Down, _)) => [Then(Mode("MAltShift"))].iter(),
 
-            ("Alt", Key(56, Up, _)) => [Mode(".")].iter(),
-            ("Alt", Key(42, Down, _)) => [Mode("AltShift")].iter(),
+            (Mode("MAltShift"), Key(42, Up, _)) => [Then(Mode("MAlt"))].iter(),
+            (Mode("MAltShift"), Key(56, Up, _)) => [Then(Mode("MShift"))].iter(),
 
-            ("AltShift", Key(42, Up, _)) => [Mode("Alt")].iter(),
-            ("AltShift", Key(56, Up, _)) => [Mode("Shift")].iter(),
+            (Mode("MAltShift"), Key(37, Down, _)) => [Launch("AltShiftJ")].iter(),
 
-            _ => [].iter()
+            _ => [].iter(),
         };
+
+        let mut reemit = true;
 
         for act in next {
             match act {
-                Mode(m) => {
-                    println!("\t\t{:?}", m);
-                    self.mode = m;
+                Drop => {
+                    reemit = false;
                 }
+
+                Emit(c, m) => {
+                    self.emit(Key(*c, *m, None), sink);
+                }
+
+                Then(new_mode) => {
+                    self.emit(Off(self.mode), sink);
+                    self.emit(On(*new_mode), sink);
+                    self.mode = *new_mode;
+
+                    println!("\t\t{:?}", *new_mode);
+                }
+
+                Mask(c) => {}
+                Map(from, to) => {}
+                Launch(name) => {}
             }
         }
 
-        //but we want to transmit ticks as well...
-
-        if let Key(_, _, raw) = &ev {
-            match raw {
-                Some(_) => self.emit(ev, sink),
-                None => {}
-            }
+        if reemit {
+            self.emit(ev, sink);
         }
     }
 }
-
-

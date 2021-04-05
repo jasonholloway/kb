@@ -1,24 +1,34 @@
-
-#[derive(Debug)]
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum Update<TRaw> {
     Key(u16, Movement, Option<TRaw>),
     Tick,
-    ModeOn(&'static str),
-    ModeOff(&'static str),
-    Drop
+    On(Mode),
+    Off(Mode),
 }
 
-#[derive(Debug)]
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum Movement {
     Up,
-    Down
+    Down,
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum Mode {
+    Root,
+    Mode(&'static str),
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum Act {
+    Drop,
+    Mask(u16),
+    Map(u16, u16),
+    Emit(u16, Movement),
+    Then(Mode),
+    Launch(&'static str),
+}
 
 pub type NextDue = u64;
-
 
 // #[derive(Debug)]
 // #[derive(Copy, Clone)]

@@ -10,6 +10,7 @@ edition = "2018"
 cfg-if = "1.0.0"
 bitmaps = "2.1.0"
 typenum = "1.11.2"
+velcro = "0.5.3"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["minwindef","winuser","wincon"] }

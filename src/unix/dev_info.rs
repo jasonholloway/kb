@@ -1,6 +1,5 @@
 // use evdev_rs::{Device, InputEvent, enums::{EV_ABS, EV_KEY, EV_LED, EV_REL, EventCode, EventType, InputProp}};
 
-
 // pub fn dev_info(d: &Device) {
 // 		println!(
 // 				"Input device ID: bus 0x{:x} vendor 0x{:x} product 0x{:x}",
@@ -11,8 +10,8 @@
 // 		println!("Evdev version: {:x}", d.driver_version());
 // 		println!("Input device name: \"{}\"", d.name().unwrap_or(""));
 // 		println!("Phys location: {}", d.phys().unwrap_or(""));
-// 		println!("Uniq identifier: {}", d.uniq().unwrap_or(""));			
-	
+// 		println!("Uniq identifier: {}", d.uniq().unwrap_or(""));
+
 // 		print_props(&d);
 // 		print_bits(&d);
 // }
@@ -100,9 +99,6 @@
 //         }
 //     }
 // }
-
-
-
 
 // pub fn event_info(ev: &InputEvent) {
 //     match ev.event_code {

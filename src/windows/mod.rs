@@ -1,16 +1,17 @@
 #[cfg(windows)]
 extern crate winapi;
 
+use crate::Handler;
+use crate::{Movement::*, Update::*};
+use std::cell::RefCell;
 use std::io::Error;
 use std::ptr::null_mut;
-use winapi::shared::minwindef::{LPARAM, LRESULT, WPARAM, UINT};
+use winapi::shared::minwindef::{LPARAM, LRESULT, UINT, WPARAM};
 use winapi::um::winuser::{
     CallNextHookEx, DispatchMessageW, GetMessageW, SetWindowsHookExW, TranslateMessage,
-    UnhookWindowsHookEx, WH_KEYBOARD_LL, MSG, WM_QUIT, KBDLLHOOKSTRUCT, HC_ACTION, WM_KEYDOWN, WM_KEYUP
+    UnhookWindowsHookEx, HC_ACTION, KBDLLHOOKSTRUCT, MSG, WH_KEYBOARD_LL, WM_KEYDOWN, WM_KEYUP,
+    WM_QUIT,
 };
-use std::cell::RefCell;
-use crate::Handler;
-use crate::{Update::*,Movement::*};
 
 type KeyTup = (i32, WPARAM, LPARAM);
 
@@ -18,7 +19,7 @@ unsafe extern "system" fn key_hook(code: i32, wParam: WPARAM, lParam: LPARAM) ->
     if code < 0 {
         return CallNextHookEx(null_mut(), code, wParam, lParam);
     }
-    
+
     HANDLER.with(|h| {
         if let Some(handler) = (*h).borrow_mut().as_mut() {
             let kb = lParam as *const KBDLLHOOKSTRUCT;
