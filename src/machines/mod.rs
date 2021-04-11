@@ -6,36 +6,21 @@ use crate::{common::Update, common::Update::*};
 use bitmaps::{Bitmap, Bits};
 use std::collections::{vec_deque::*, HashMap};
 
+pub mod big_machine;
 pub mod dynamic_machine;
 pub mod key_maps;
 pub mod lead_machine;
 pub mod mode_machine;
 pub mod print_keys;
-pub mod big_machine;
 
 type Sink<TEv> = VecDeque<TEv>;
-
-// pub struct Sink<TEv> {
-//     vecdeque: VecDeque<TEv>
-// }
-
-// impl<TEv> Sink<TEv> {
-//     fn emit(&mut self, ev: TEv) {}
-//     fn emit_many(&mut self, ev: TEv) {}
-// }
-
-
-
-
 
 pub trait Machine<TEv> {
     fn run(&mut self, ev: TEv, sink: &mut Sink<TEv>) -> ();
 }
 
-
 pub type MachineFac<TEv> = Box<dyn Fn() -> MachineRef<TEv>>;
 pub type MachineRef<TEv> = Box<dyn Machine<TEv>>;
-
 
 pub trait HasMaps {
     fn maps(&mut self) -> &mut KeyMaps;
@@ -58,8 +43,8 @@ pub struct Runner<TEv, TLookup>
 where
     TLookup: LookupFac<MachineRef<TEv>>,
 {
-    lookup: TLookup,
     active: Vec<MachineRef<TEv>>,
+    lookup: TLookup,
     buff1: VecDeque<TEv>,
     buff2: VecDeque<TEv>,
 }
@@ -72,14 +57,12 @@ where
         lookup: TLookup,
         initial: TTags,
     ) -> Runner<TEv, TLookup> {
-        let active = initial
-            .into_iter()
-            .flat_map(|s| lookup.find(s))
-            .collect::<Vec<_>>();
-
         Runner {
+            active: initial
+                .into_iter()
+                .flat_map(|s| lookup.find(s))
+                .collect::<Vec<_>>(),
             lookup,
-            active,
             buff1: VecDeque::new(),
             buff2: VecDeque::new(),
         }
@@ -128,8 +111,8 @@ mod machines_tests {
         count: u16,
     }
 
-    impl<TSink: Sink<()>> Machine<(), TSink> for TestMachine {
-        fn run(&mut self, ev: (), sink: &mut TSink) -> () {
+    impl Machine<()> for TestMachine {
+        fn run(&mut self, ev: (), sink: &mut Sink<()>) -> () {
             for i in 0..self.count {
                 sink.extend(Some(()));
             }
@@ -161,7 +144,7 @@ use super::Movement::*;
 
 impl<TRaw, TSelf> CanMask<Update<TRaw>> for TSelf
 where
-    TSelf: HasMaps
+    TSelf: HasMaps,
 {
     fn mask(&mut self, codes: &[u16], sink: &mut Sink<Update<TRaw>>) {
         for c in codes {
@@ -195,13 +178,11 @@ where
     }
 }
 
-
 pub trait LookupFac<T> {
     fn find(&self, tag: &'static str) -> Option<T>;
 }
 
-impl<TEv> LookupFac<MachineRef<TEv>> for HashMap<&str, MachineFac<TEv>>
-{
+impl<TEv> LookupFac<MachineRef<TEv>> for HashMap<&str, MachineFac<TEv>> {
     fn find(&self, tag: &'static str) -> Option<MachineRef<TEv>> {
         self.get(tag).map(|f| f())
     }

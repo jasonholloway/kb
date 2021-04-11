@@ -8,7 +8,7 @@ extern crate velcro;
 extern crate libc;
 
 use common::*;
-use machines::{MachineFac, Runner, big_machine::BigMachine, print_keys::PrintKeys};
+use machines::{MachineFac, Runner, big_machine::BigMachine, mode_machine::ModeMachine, lead_machine::LeadMachine, print_keys::PrintKeys};
 use std::{collections::{HashMap}, fmt::Debug};
 use velcro::hash_map;
 
@@ -44,19 +44,21 @@ where
 {
     Runner::new(
         hash_map![
-            "print1": print_keys_fac(),
-            "print2": print_keys_fac(),
+            "print1": print_keys_fac(1, 33),
+            "print2": print_keys_fac(4, 35),
             "blah": dynamic_machine_fac(),
-            "big": big_machine_fac()
+            "big": big_machine_fac(),
+            "modes": Box::new(|| Box::new(ModeMachine::new())),
+            "leads": Box::new(|| Box::new(LeadMachine::new()))
         ],
         vec![
-            "print1", "big", "print2"
+            "print1", "modes", "leads", "print2"
         ])
 }
 
-fn print_keys_fac<TRaw: Debug>() -> MachineFac<Update<TRaw>>
+fn print_keys_fac<TRaw: Debug>(tabs: u8, col: u8) -> MachineFac<Update<TRaw>>
 {
-    Box::new(|| Box::new(PrintKeys::new(1, 32)))
+    Box::new(move || Box::new(PrintKeys::new(tabs, col)))
 }
 
 fn dynamic_machine_fac<TRaw: Debug>() -> MachineFac<Update<TRaw>>
