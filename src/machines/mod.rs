@@ -106,6 +106,8 @@ pub fn gather_map<T, T2: Bits>(event: &Update<T>, map: &mut Bitmap<T2>) {
 #[cfg(test)]
 mod machines_tests {
     use super::*;
+    use crate::fac;
+    use velcro::hash_map;
 
     struct TestMachine {
         count: u16,
@@ -122,14 +124,14 @@ mod machines_tests {
     #[test]
     fn machines_run_in_sequence() {
         let mut runner = Runner::new(
-            vec![
-                Box::from(TestMachine { count: 3 }),
-                Box::from(TestMachine { count: 4 }),
-                Box::from(TestMachine { count: 5 }),
-                Box::from(TestMachine { count: 6 }),
-                Box::from(TestMachine { count: 7 }),
+            hash_map![
+                "1": fac(|| TestMachine { count: 3 }),
+                "2": fac(|| TestMachine { count: 4 }),
+                "3": fac(|| TestMachine { count: 5 }),
+                "4": fac(|| TestMachine { count: 6 }),
+                "5": fac(|| TestMachine { count: 7 }),
             ],
-            [""],
+            vec!["1", "2", "3", "4", "5"]
         );
 
         let mut sink = VecDeque::new();

@@ -66,10 +66,9 @@ pub enum Event<'a, R> {
 
 
 
-fn fac<TRaw, TMac, TFn>(f: TFn) -> MachineFac<Update<TRaw>>
+pub fn fac<TEv, TMac, TFn>(f: TFn) -> MachineFac<TEv>
 where
-    TRaw: Debug,
-    TMac: 'static + Machine<Update<TRaw>>,
+    TMac: 'static + Machine<TEv>,
     TFn: 'static + Fn() -> TMac,
 {
     Box::new(move || Box::new(f()))
