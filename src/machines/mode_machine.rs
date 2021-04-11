@@ -1,9 +1,6 @@
-use super::{gather_map, key_maps::KeyMaps, CanEmit, HasMaps, Machine};
+use super::{gather_map, key_maps::KeyMaps, CanEmit, HasMaps, Machine, Sink};
 use crate::common::{Act::*, Mode, Mode::*};
-use crate::{
-    common::{Movement::*, *},
-    sink::Sink,
-};
+use crate::common::{Movement::*, *};
 use std::fmt::Debug;
 
 pub struct ModeMachine {
@@ -26,12 +23,11 @@ impl HasMaps for ModeMachine {
     }
 }
 
-impl<TRaw, TSink> Machine<Update<TRaw>, TSink> for ModeMachine
+impl<TRaw> Machine<Update<TRaw>> for ModeMachine
 where
     TRaw: Debug,
-    TSink: Sink<Update<TRaw>>,
 {
-    fn run<'a>(&mut self, ev: Update<TRaw>, sink: &'a mut TSink) -> () {
+    fn run<'a>(&mut self, ev: Update<TRaw>, sink: &'a mut Sink<Update<TRaw>>) -> () {
         use Update::*;
 
         gather_map(&ev, &mut self.maps.inp);

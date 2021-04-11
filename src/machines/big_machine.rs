@@ -1,8 +1,7 @@
 use std::fmt::Debug;
-use crate::{common::{Movement::*, *}, sink::Sink};
-use Update::*;
+use crate::common::{Movement::*, Update, Update::*};
 use crate::Action::*;
-use super::{CanEmit, CanMask, HasMaps, Machine, key_maps::KeyMaps, gather_map};
+use super::{CanEmit, CanMask, HasMaps, Machine, Sink, gather_map, key_maps::KeyMaps};
 
 
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -37,13 +36,12 @@ impl HasMaps for BigMachine {
     }
 }
 
-impl<TRaw, TSink> Machine<Update<TRaw>, TSink>
+impl<TRaw> Machine<Update<TRaw>>
     for BigMachine
 where
     TRaw: Debug,
-    TSink: Sink<Update<TRaw>> {
-
-    fn run<'a>(&mut self, ev: Update<TRaw>, sink: &'a mut TSink) -> () {
+{
+    fn run<'a>(&mut self, ev: Update<TRaw>, sink: &'a mut Sink<Update<TRaw>>) -> () {
         use Mode::*;
         
         gather_map(&ev, &mut self.maps.inp);

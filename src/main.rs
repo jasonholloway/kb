@@ -8,11 +8,8 @@ extern crate velcro;
 extern crate libc;
 
 use common::*;
-use machines::{LookupFac, MachineFac, Runner};
-use std::{
-    collections::{HashMap},
-    fmt::Debug,
-};
+use machines::{MachineFac, Runner, big_machine::BigMachine, print_keys::PrintKeys};
+use std::{collections::{HashMap}, fmt::Debug};
 use velcro::hash_map;
 
 #[cfg(windows)]
@@ -38,16 +35,6 @@ pub fn main() {
     }
 }
 
-fn print_keys_fac<TRaw>() -> MachineFac<Update<TRaw>>
-{
-    todo!()
-}
-
-fn dynamic_machine_fac<TRaw>() -> MachineFac<Update<TRaw>>
-{
-    todo!()
-}
-
 fn create_runner<'a, TRaw>() -> Runner<
     Update<TRaw>,
     HashMap<&'a str, MachineFac<Update<TRaw>>>
@@ -57,13 +44,31 @@ where
 {
     Runner::new(
         hash_map![
-            "print": print_keys_fac(),
-            "blah": dynamic_machine_fac()
+            "print1": print_keys_fac(),
+            "print2": print_keys_fac(),
+            "blah": dynamic_machine_fac(),
+            "big": big_machine_fac()
         ],
         vec![
-            "print", "blah"
+            "print1", "big", "print2"
         ])
 }
+
+fn print_keys_fac<TRaw: Debug>() -> MachineFac<Update<TRaw>>
+{
+    Box::new(|| Box::new(PrintKeys::new(1, 32)))
+}
+
+fn dynamic_machine_fac<TRaw: Debug>() -> MachineFac<Update<TRaw>>
+{
+    Box::new(|| Box::new(PrintKeys::new(1, 32)))
+}
+
+fn big_machine_fac<TRaw: Debug>() -> MachineFac<Update<TRaw>>
+{
+    Box::new(|| Box::new(BigMachine::new()))
+}
+
 
 pub enum Action {
     Skip,

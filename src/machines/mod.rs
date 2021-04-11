@@ -2,7 +2,7 @@
 #![allow(unused_mut)]
 
 use self::key_maps::KeyMaps;
-use crate::{common::Update, common::Update::*, sink::*};
+use crate::{common::Update, common::Update::*};
 use bitmaps::{Bitmap, Bits};
 use std::collections::{vec_deque::*, HashMap};
 
@@ -11,30 +11,47 @@ pub mod key_maps;
 pub mod lead_machine;
 pub mod mode_machine;
 pub mod print_keys;
+pub mod big_machine;
 
-pub trait Machine<TEv, TSink: Sink<TEv>> {
-    fn run(&mut self, ev: TEv, sink: &mut TSink) -> ();
+type Sink<TEv> = VecDeque<TEv>;
+
+// pub struct Sink<TEv> {
+//     vecdeque: VecDeque<TEv>
+// }
+
+// impl<TEv> Sink<TEv> {
+//     fn emit(&mut self, ev: TEv) {}
+//     fn emit_many(&mut self, ev: TEv) {}
+// }
+
+
+
+
+
+pub trait Machine<TEv> {
+    fn run(&mut self, ev: TEv, sink: &mut Sink<TEv>) -> ();
 }
 
-pub type MachineRef<TEv> = Box<dyn Machine<TEv, VecDeque<TEv>>>;
 
 pub type MachineFac<TEv> = Box<dyn Fn() -> MachineRef<TEv>>;
+pub type MachineRef<TEv> = Box<dyn Machine<TEv>>;
+
 
 pub trait HasMaps {
     fn maps(&mut self) -> &mut KeyMaps;
 }
 
-pub trait CanMask<TEv, TSink: Sink<TEv>>: HasMaps {
-    fn mask(&mut self, codes: &[u16], sink: &mut TSink);
-    fn unmask(&mut self, codes: &[u16], sink: &mut TSink);
+pub trait CanMask<TEv>: HasMaps {
+    fn mask(&mut self, codes: &[u16], sink: &mut Sink<TEv>);
+    fn unmask(&mut self, codes: &[u16], sink: &mut Sink<TEv>);
 }
 
-pub trait CanEmit<TEv, TSink: Sink<TEv>> {
-    fn emit(&mut self, ev: TEv, sink: &mut TSink);
+pub trait CanEmit<TEv> {
+    fn emit(&mut self, ev: TEv, sink: &mut Sink<TEv>);
 }
 
 pub trait Runnable<TEv> {
-    fn run<TSink: Sink<TEv>>(&mut self, ev: TEv, sink: &mut TSink) -> ();
+    fn run(&mut self, ev: TEv, sink: &mut Sink<TEv>) -> ();
 }
 
 pub struct Runner<TEv, TLookup>
@@ -74,7 +91,7 @@ where
     TEv: std::fmt::Debug,
     TLookup: LookupFac<MachineRef<TEv>>,
 {
-    fn run<TSink: Sink<TEv>>(&mut self, ev: TEv, sink: &mut TSink) -> () {
+    fn run(&mut self, ev: TEv, sink: &mut Sink<TEv>) -> () {
         let mut input = &mut self.buff1;
         let mut output = &mut self.buff2;
 
@@ -88,7 +105,7 @@ where
             input.extend(output.drain(0..));
         }
 
-        sink.emit_many(input.drain(0..));
+        sink.extend(input.drain(0..));
     }
 }
 
@@ -142,12 +159,11 @@ mod machines_tests {
 
 use super::Movement::*;
 
-impl<TRaw, TSink, TSelf> CanMask<Update<TRaw>, TSink> for TSelf
+impl<TRaw, TSelf> CanMask<Update<TRaw>> for TSelf
 where
-    TSelf: HasMaps,
-    TSink: Sink<Update<TRaw>>,
+    TSelf: HasMaps
 {
-    fn mask(&mut self, codes: &[u16], sink: &mut TSink) {
+    fn mask(&mut self, codes: &[u16], sink: &mut Sink<Update<TRaw>>) {
         for c in codes {
             let maskable = !self.maps().mask.set(*c as usize, true);
 
@@ -157,7 +173,7 @@ where
         }
     }
 
-    fn unmask(&mut self, codes: &[u16], sink: &mut TSink) {
+    fn unmask(&mut self, codes: &[u16], sink: &mut Sink<Update<TRaw>>) {
         for c in codes {
             let unmaskable = self.maps().mask.set(*c as usize, false);
 
@@ -169,26 +185,24 @@ where
     }
 }
 
-impl<TRaw, TSink, TSelf> CanEmit<Update<TRaw>, TSink> for TSelf
+impl<TRaw, TSelf> CanEmit<Update<TRaw>> for TSelf
 where
     TSelf: HasMaps,
-    TSink: Sink<Update<TRaw>>,
 {
-    fn emit(&mut self, ev: Update<TRaw>, sink: &mut TSink) {
+    fn emit(&mut self, ev: Update<TRaw>, sink: &mut Sink<Update<TRaw>>) {
         gather_map(&ev, &mut self.maps().outp);
-        sink.emit(ev);
+        sink.push_back(ev);
     }
 }
+
 
 pub trait LookupFac<T> {
     fn find(&self, tag: &'static str) -> Option<T>;
 }
 
-impl<T, TFn> LookupFac<T> for HashMap<&str, TFn>
-where
-    TFn: Fn() -> T,
+impl<TEv> LookupFac<MachineRef<TEv>> for HashMap<&str, MachineFac<TEv>>
 {
-    fn find(&self, tag: &'static str) -> Option<T> {
+    fn find(&self, tag: &'static str) -> Option<MachineRef<TEv>> {
         self.get(tag).map(|f| f())
     }
 }

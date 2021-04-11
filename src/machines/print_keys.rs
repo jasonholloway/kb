@@ -1,5 +1,5 @@
-use super::{gather_map, Machine};
-use crate::{common::Update, sink::Sink, Update::*};
+use super::{gather_map, Machine, Sink};
+use crate::{common::Update, Update::*};
 use bitmaps::Bitmap;
 use std::fmt::Debug;
 use typenum::*;
@@ -44,18 +44,17 @@ impl PrintKeys {
     }
 }
 
-impl<TRaw, TSink> Machine<Update<TRaw>, TSink> for PrintKeys
+impl<TRaw> Machine<Update<TRaw>> for PrintKeys
 where
-    TRaw: Debug,
-    TSink: Sink<Update<TRaw>>,
+    TRaw: Debug
 {
-    fn run(&mut self, ev: Update<TRaw>, sink: &mut TSink) -> () {
+    fn run(&mut self, ev: Update<TRaw>, sink: &mut Sink<Update<TRaw>>) -> () {
         gather_map(&ev, &mut self.out_map);
 
         if let Key(_, _, _) = ev {
             self.print(&ev);
         }
 
-        sink.emit(ev);
+        sink.push_back(ev);
     }
 }

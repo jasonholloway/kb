@@ -1,14 +1,10 @@
-use crate::sink::Sink;
-
-use super::Machine;
+use super::{Machine, Sink};
 
 pub struct DynamicMachine {}
 
-impl<TEv, TSink> Machine<TEv, TSink> for DynamicMachine
-where
-    TSink: Sink<TEv>,
+impl<TEv> Machine<TEv> for DynamicMachine
 {
-    fn run(&mut self, ev: TEv, sink: &mut TSink) -> () {
-        sink.emit(ev);
+    fn run(&mut self, ev: TEv, sink: &mut Sink<TEv>) -> () {
+        sink.push_back(ev);
     }
 }
