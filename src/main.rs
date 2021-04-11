@@ -8,8 +8,11 @@ extern crate velcro;
 extern crate libc;
 
 use common::*;
-use machines::{MachineFac, Runner, big_machine::BigMachine, mode_machine::ModeMachine, lead_machine::LeadMachine, print_keys::PrintKeys};
-use std::{collections::{HashMap}, fmt::Debug};
+use machines::{
+    big_machine::BigMachine, lead_machine::LeadMachine, mode_machine::ModeMachine,
+    print_keys::PrintKeys, Machine, MachineFac, Runner,
+};
+use std::{collections::HashMap, fmt::Debug};
 use velcro::hash_map;
 
 #[cfg(windows)]
@@ -35,42 +38,21 @@ pub fn main() {
     }
 }
 
-fn create_runner<'a, TRaw>() -> Runner<
-    Update<TRaw>,
-    HashMap<&'a str, MachineFac<Update<TRaw>>>
->
+fn create_runner<'a, TRaw>() -> Runner<Update<TRaw>, HashMap<&'a str, MachineFac<Update<TRaw>>>>
 where
     TRaw: 'static + Debug,
 {
     Runner::new(
         hash_map![
-            "print1": print_keys_fac(1, 33),
-            "print2": print_keys_fac(4, 35),
-            "blah": dynamic_machine_fac(),
-            "big": big_machine_fac(),
-            "modes": Box::new(|| Box::new(ModeMachine::new())),
-            "leads": Box::new(|| Box::new(LeadMachine::new()))
+            "print1": fac(|| PrintKeys::new(1, 31)),
+            "print2": fac(|| PrintKeys::new(4, 35)),
+            "big": fac(|| BigMachine::new()),
+            "modes": fac(|| ModeMachine::new()),
+            "leads": fac(|| LeadMachine::new())
         ],
-        vec![
-            "print1", "modes", "leads", "print2"
-        ])
+        vec!["print1", "modes", "leads", "print2"],
+    )
 }
-
-fn print_keys_fac<TRaw: Debug>(tabs: u8, col: u8) -> MachineFac<Update<TRaw>>
-{
-    Box::new(move || Box::new(PrintKeys::new(tabs, col)))
-}
-
-fn dynamic_machine_fac<TRaw: Debug>() -> MachineFac<Update<TRaw>>
-{
-    Box::new(|| Box::new(PrintKeys::new(1, 32)))
-}
-
-fn big_machine_fac<TRaw: Debug>() -> MachineFac<Update<TRaw>>
-{
-    Box::new(|| Box::new(BigMachine::new()))
-}
-
 
 pub enum Action {
     Skip,
@@ -80,4 +62,15 @@ pub enum Action {
 pub enum Event<'a, R> {
     In(&'a Update<R>),
     Out(&'a Update<R>),
+}
+
+
+
+fn fac<TRaw, TMac, TFn>(f: TFn) -> MachineFac<Update<TRaw>>
+where
+    TRaw: Debug,
+    TMac: 'static + Machine<Update<TRaw>>,
+    TFn: 'static + Fn() -> TMac,
+{
+    Box::new(move || Box::new(f()))
 }
