@@ -4,8 +4,9 @@
 use self::key_maps::KeyMaps;
 use crate::{common::Update, common::Update::*, sink::*};
 use bitmaps::{Bitmap, Bits};
-use std::collections::vec_deque::*;
+use std::collections::{vec_deque::*, HashMap};
 
+pub mod dynamic_machine;
 pub mod key_maps;
 pub mod lead_machine;
 pub mod mode_machine;
@@ -14,6 +15,10 @@ pub mod print_keys;
 pub trait Machine<TEv, TSink: Sink<TEv>> {
     fn run(&mut self, ev: TEv, sink: &mut TSink) -> ();
 }
+
+pub type MachineRef<TEv> = Box<dyn Machine<TEv, VecDeque<TEv>>>;
+
+pub type MachineFac<TEv> = Box<dyn Fn() -> MachineRef<TEv>>;
 
 pub trait HasMaps {
     fn maps(&mut self) -> &mut KeyMaps;
@@ -32,30 +37,32 @@ pub trait Runnable<TEv> {
     fn run<TSink: Sink<TEv>>(&mut self, ev: TEv, sink: &mut TSink) -> ();
 }
 
-
 pub struct Runner<TEv, TLookup>
 where
-    TLookup: LookupMachine<TEv>,
+    TLookup: LookupFac<MachineRef<TEv>>,
 {
     lookup: TLookup,
-    active: Vec<Box<dyn Machine<TEv, VecDeque<TEv>>>>,
+    active: Vec<MachineRef<TEv>>,
     buff1: VecDeque<TEv>,
     buff2: VecDeque<TEv>,
 }
 
 impl<'a, TEv, TLookup> Runner<TEv, TLookup>
 where
-    TLookup: LookupMachine<TEv>
+    TLookup: LookupFac<MachineRef<TEv>>,
 {
     pub fn new<TTags: IntoIterator<Item = &'static str>>(
         lookup: TLookup,
         initial: TTags,
     ) -> Runner<TEv, TLookup> {
+        let active = initial
+            .into_iter()
+            .flat_map(|s| lookup.find(s))
+            .collect::<Vec<_>>();
+
         Runner {
             lookup,
-            active: initial.into_iter()
-                .flat_map(|s| lookup.find(s))
-                .collect::<Vec<_>>(),
+            active,
             buff1: VecDeque::new(),
             buff2: VecDeque::new(),
         }
@@ -65,7 +72,7 @@ where
 impl<TEv, TLookup> Runnable<TEv> for Runner<TEv, TLookup>
 where
     TEv: std::fmt::Debug,
-    TLookup: LookupMachine<TEv>
+    TLookup: LookupFac<MachineRef<TEv>>,
 {
     fn run<TSink: Sink<TEv>>(&mut self, ev: TEv, sink: &mut TSink) -> () {
         let mut input = &mut self.buff1;
@@ -114,13 +121,16 @@ mod machines_tests {
 
     #[test]
     fn machines_run_in_sequence() {
-        let mut runner = Runner::new(vec![
-            Box::from(TestMachine { count: 3 }),
-            Box::from(TestMachine { count: 4 }),
-            Box::from(TestMachine { count: 5 }),
-            Box::from(TestMachine { count: 6 }),
-            Box::from(TestMachine { count: 7 }),
-        ], [""]);
+        let mut runner = Runner::new(
+            vec![
+                Box::from(TestMachine { count: 3 }),
+                Box::from(TestMachine { count: 4 }),
+                Box::from(TestMachine { count: 5 }),
+                Box::from(TestMachine { count: 6 }),
+                Box::from(TestMachine { count: 7 }),
+            ],
+            [""],
+        );
 
         let mut sink = VecDeque::new();
         runner.run((), &mut sink);
@@ -170,14 +180,15 @@ where
     }
 }
 
-pub trait LookupMachine<TEv> {
-    fn find(&self, tag: &'static str) -> Option<Box<dyn Machine<TEv, VecDeque<TEv>>>>;
+pub trait LookupFac<T> {
+    fn find(&self, tag: &'static str) -> Option<T>;
 }
 
-impl<TEv> LookupMachine<TEv>
-    for std::collections::HashMap<&'static str, fn() -> Box<dyn Machine<TEv, VecDeque<TEv>>>>
+impl<T, TFn> LookupFac<T> for HashMap<&str, TFn>
+where
+    TFn: Fn() -> T,
 {
-    fn find(&self, tag: &'static str) -> Option<Box<dyn Machine<TEv, VecDeque<TEv>>>> {
+    fn find(&self, tag: &'static str) -> Option<T> {
         self.get(tag).map(|f| f())
     }
 }

@@ -8,11 +8,9 @@ extern crate velcro;
 extern crate libc;
 
 use common::*;
-use machines::{
-    lead_machine::LeadMachine, mode_machine::ModeMachine, print_keys::PrintKeys, Machine, Runner,
-};
+use machines::{LookupFac, MachineFac, Runner};
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{HashMap},
     fmt::Debug,
 };
 use velcro::hash_map;
@@ -40,28 +38,31 @@ pub fn main() {
     }
 }
 
+fn print_keys_fac<TRaw>() -> MachineFac<Update<TRaw>>
+{
+    todo!()
+}
 
-fn create_runner<TRaw>() -> Runner<
+fn dynamic_machine_fac<TRaw>() -> MachineFac<Update<TRaw>>
+{
+    todo!()
+}
+
+fn create_runner<'a, TRaw>() -> Runner<
     Update<TRaw>,
-    HashMap<&'static str, fn() -> Box<dyn Machine<Update<TRaw>, VecDeque<Update<TRaw>>>>>,
+    HashMap<&'a str, MachineFac<Update<TRaw>>>
 >
 where
     TRaw: 'static + Debug,
 {
-    let r = Runner::new(
+    Runner::new(
         hash_map![
-            "blah": create_mode_machine
+            "print": print_keys_fac(),
+            "blah": dynamic_machine_fac()
         ],
-        &["blah"]
-    );
-
-    r
-    // Runner::<Update<TRaw>, _>::new(vec![
-    //     Box::from(PrintKeys::new(1, 31)),
-    //     Box::from(ModeMachine::new()),
-    //     Box::from(LeadMachine::new()),
-    //     Box::from(PrintKeys::new(3, 32)),
-    // ])
+        vec![
+            "print", "blah"
+        ])
 }
 
 pub enum Action {
