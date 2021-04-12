@@ -2,7 +2,6 @@ use std::collections::VecDeque;
 
 use super::{LookupFac, MachineRef, Runnable, Sink};
 
-
 pub struct Runner<TEv, TLookup>
 where
     TLookup: LookupFac<MachineRef<TEv>>,
