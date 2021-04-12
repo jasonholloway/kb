@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use crate::common::{Movement::*, Update, Update::*};
 use crate::Action::*;
-use super::{CanEmit, CanMask, HasMaps, Machine, Sink, gather_map, key_maps::KeyMaps};
+use super::{CanEmit, CanMask, HasMaps, Runnable, Sink, gather_map, key_maps::KeyMaps};
 
 
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -36,7 +36,7 @@ impl HasMaps for BigMachine {
     }
 }
 
-impl<TRaw> Machine<Update<TRaw>>
+impl<TRaw> Runnable<Update<TRaw>>
     for BigMachine
 where
     TRaw: Debug,

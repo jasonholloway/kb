@@ -1,4 +1,4 @@
-use super::{gather_map, key_maps::KeyMaps, CanEmit, HasMaps, Machine, Sink};
+use super::{gather_map, key_maps::KeyMaps, CanEmit, HasMaps, Sink, Runnable};
 use crate::common::{Act::*, Mode, Mode::*};
 use crate::common::{Movement::*, *};
 use std::fmt::Debug;
@@ -23,7 +23,7 @@ impl HasMaps for LeadMachine {
     }
 }
 
-impl<TRaw> Machine<Update<TRaw>> for LeadMachine
+impl<TRaw> Runnable<Update<TRaw>> for LeadMachine
 where
     TRaw: Debug
 {

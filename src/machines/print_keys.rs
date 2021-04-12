@@ -1,4 +1,4 @@
-use super::{gather_map, Machine, Sink};
+use super::{gather_map, Runnable, Sink};
 use crate::{common::Update, Update::*};
 use bitmaps::Bitmap;
 use std::fmt::Debug;
@@ -44,7 +44,7 @@ impl PrintKeys {
     }
 }
 
-impl<TRaw> Machine<Update<TRaw>> for PrintKeys
+impl<TRaw> Runnable<Update<TRaw>> for PrintKeys
 where
     TRaw: Debug
 {

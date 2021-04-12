@@ -8,10 +8,7 @@ extern crate velcro;
 extern crate libc;
 
 use common::*;
-use machines::{
-    big_machine::BigMachine, lead_machine::LeadMachine, mode_machine::ModeMachine,
-    print_keys::PrintKeys, Machine, MachineFac, Runner,
-};
+use machines::{MachineFac, Runnable, big_machine::BigMachine, lead_machine::LeadMachine, mode_machine::ModeMachine, print_keys::PrintKeys, runner::Runner};
 use std::{collections::HashMap, fmt::Debug};
 use velcro::hash_map;
 
@@ -68,7 +65,7 @@ pub enum Event<'a, R> {
 
 pub fn fac<TEv, TMac, TFn>(f: TFn) -> MachineFac<TEv>
 where
-    TMac: 'static + Machine<TEv>,
+    TMac: 'static + Runnable<TEv>,
     TFn: 'static + Fn() -> TMac,
 {
     Box::new(move || Box::new(f()))
