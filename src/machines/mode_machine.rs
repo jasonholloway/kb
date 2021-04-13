@@ -27,7 +27,7 @@ impl<TRaw> Runnable<Update<TRaw>> for ModeMachine
 where
     TRaw: Debug,
 {
-    fn run<'a>(&mut self, ev: Update<TRaw>, sink: &'a mut Sink<Update<TRaw>>) -> () {
+    fn run<'a>(&mut self, ev: Update<TRaw>, sink: &'a mut Sink<Update<TRaw>>) {
         use Update::*;
 
         gather_map(&ev, &mut self.maps.inp);

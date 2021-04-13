@@ -8,9 +8,8 @@ extern crate velcro;
 extern crate libc;
 
 use common::*;
-use machines::{MachineFac, Runnable, big_machine::BigMachine, lead_machine::LeadMachine, mode_machine::ModeMachine, print_keys::PrintKeys, runner::Runner};
-use std::{collections::HashMap, fmt::Debug};
-use velcro::hash_map;
+use machines::{MachineFac, RunRef, Runnable, big_machine::BigMachine, lead_machine::LeadMachine, mode_machine::ModeMachine, print_keys::PrintKeys, runner::Runner};
+use std::{fmt::Debug};
 
 #[cfg(windows)]
 mod windows;
@@ -35,20 +34,17 @@ pub fn main() {
     }
 }
 
-fn create_runner<'a, TRaw>() -> Runner<Update<TRaw>, HashMap<&'a str, MachineFac<Update<TRaw>>>>
+fn create_runner<'a, TRaw>() -> Runner<Update<TRaw>>
 where
     TRaw: 'static + Debug,
 {
-    Runner::new(
-        hash_map![
-            "print1": fac(|| PrintKeys::new(1, 31)),
-            "print2": fac(|| PrintKeys::new(4, 35)),
-            "big": fac(|| BigMachine::new()),
-            "modes": fac(|| ModeMachine::new()),
-            "leads": fac(|| LeadMachine::new())
-        ],
-        vec!["print1", "modes", "leads", "print2"],
-    )
+    Runner::new(vec![
+        RunRef::new("print1", PrintKeys::new(1, 31)),
+        RunRef::new("print2", PrintKeys::new(4, 35)),
+        RunRef::new("big", BigMachine::new()),
+        RunRef::new("mode", ModeMachine::new()),
+        RunRef::new("lead", LeadMachine::new())
+    ])
 }
 
 pub enum Action {

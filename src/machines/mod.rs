@@ -22,6 +22,29 @@ mod runer_test;
 
 
 
+pub struct RunRef<TEv> {
+    tag: &'static str,
+    inner: Box<dyn Runnable<TEv>>
+}
+
+impl<TEv> RunRef<TEv> {
+    pub fn new<T: 'static + Runnable<TEv>>(tag: &'static str, inner: T) -> RunRef<TEv> {
+        RunRef {
+            tag,
+            inner: Box::new(inner)
+        }
+    }
+}
+
+impl<T> std::fmt::Debug for RunRef<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.tag)
+    }
+}
+
+
+
+
 type Sink<TEv> = VecDeque<TEv>;
 
 
