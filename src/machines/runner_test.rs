@@ -1,5 +1,5 @@
 use super::*;
-use runner::Runner;
+use runner::{Runner,Ev};
 
 #[test]
 fn machines_run_in_sequence() {
@@ -14,8 +14,8 @@ fn machines_run_in_sequence() {
 
     let mut sink = VecDeque::new();
 
-    runner.run((), &mut sink);
-    runner.run((), &mut sink);
+    runner.run(Ev(()), &mut sink);
+    runner.run(Ev(()), &mut sink);
 
     assert_eq!(sink.len(), 2 * 3 * 4 * 5 * 6 * 7)
 }
@@ -26,7 +26,7 @@ fn empty_events_passed_through() {
 
     let mut sink = VecDeque::new();
 
-    runner.run((), &mut sink);
+    runner.run(Ev(()), &mut sink);
 
     assert_eq!(sink.len(), 1)
 }
@@ -36,7 +36,6 @@ fn machines_add_to_working_set() {
     let mut runner = Runner::new(
         vec![
             RunRef::new("alf", Alf {}),
-            RunRef::new("baz", Baz {}),
         ]);
 
     let mut sink = VecDeque::new();
@@ -45,16 +44,15 @@ fn machines_add_to_working_set() {
     runner.run(Ev::Ev(1), &mut sink);
     runner.run(Ev::Ev(1), &mut sink);
 
-    assert_eq!(sink.len(), 1)
+    assert_eq!(sink.len(), 12)
 }
-
 
 
 
 struct Alf {
 }
 
-impl Runnable<Ev<u8>> for Alf {
+impl Runnable<u8> for Alf {
     fn run(&mut self, ev: Ev<u8>, sink: &mut Sink<Ev<u8>>) {
         sink.push_back(ev);
         sink.push_back(Ev::Ev(2));
@@ -66,21 +64,15 @@ impl Runnable<Ev<u8>> for Alf {
 struct Baz {
 }
 
-impl Runnable<Ev<u8>> for Baz {
+impl Runnable<u8> for Baz {
     fn run(&mut self, ev: Ev<u8>, sink: &mut Sink<Ev<u8>>) {
         sink.push_back(ev);
         sink.push_back(Ev::Ev(3));
+        sink.push_back(Ev::Ev(4));
     }
 }
 
 
-
-#[derive(Debug)]
-enum Ev<T> {
-    Ev(T),
-    Spawn(RunRef<Ev<T>>),
-    Die
-}
 
 
 struct TestMachine {
@@ -88,9 +80,9 @@ struct TestMachine {
 }
 
 impl Runnable<()> for TestMachine {
-    fn run(&mut self, ev: (), sink: &mut Sink<()>) {
+    fn run(&mut self, ev: Ev<()>, sink: &mut Sink<Ev<()>>) {
         for i in 0..self.count {
-            sink.extend(Some(()));
+            sink.extend(Some(Ev(())));
         }
     }
 }

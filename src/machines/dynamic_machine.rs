@@ -1,10 +1,10 @@
-use super::{Runnable, Sink};
+use super::{Runnable, Sink, runner::Ev};
 
 pub struct DynamicMachine {}
 
-impl<TEv> Runnable<TEv> for DynamicMachine
+impl<TUp> Runnable<TUp> for DynamicMachine
 {
-    fn run(&mut self, ev: TEv, sink: &mut Sink<TEv>) -> () {
+    fn run(&mut self, ev: Ev<TUp>, sink: &mut Sink<Ev<TUp>>) -> () {
         sink.push_back(ev);
     }
 }

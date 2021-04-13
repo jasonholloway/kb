@@ -1,4 +1,4 @@
-use super::{gather_map, Runnable, Sink};
+use super::{Runnable, Sink, gather_map, runner::{Ev,Ev::*}};
 use crate::{common::Update, Update::*};
 use bitmaps::Bitmap;
 use std::fmt::Debug;
@@ -48,13 +48,19 @@ impl<TRaw> Runnable<Update<TRaw>> for PrintKeys
 where
     TRaw: Debug
 {
-    fn run(&mut self, ev: Update<TRaw>, sink: &mut Sink<Update<TRaw>>) -> () {
-        gather_map(&ev, &mut self.out_map);
+    fn run(&mut self, ev: Ev<Update<TRaw>>, sink: &mut Sink<Ev<Update<TRaw>>>) {
+        match ev {
+            Ev(up) => {
+                gather_map(&up, &mut self.out_map);
 
-        if let Key(_, _, _) = ev {
-            self.print(&ev);
+                if let Key(_, _, _) = up {
+                    self.print(&up);
+                }
+
+                sink.push_back(Ev(up))
+            }
+            _ => ()
         }
-
-        sink.push_back(ev);
+        
     }
 }

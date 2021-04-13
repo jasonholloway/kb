@@ -1,4 +1,4 @@
-use crate::{common::Update, machines::Runnable, Movement::*, Update::*};
+use crate::{Movement::*, Update::*, common::Update, machines::{Runnable, runner::Ev::*}};
 use evdev_rs::enums::*;
 use evdev_rs::*;
 use std::convert::TryFrom;
@@ -55,16 +55,16 @@ pub fn run<'a, TRun: Runnable<Update<InputEvent>>>(runnable: &mut TRun) -> Resul
                                     }
                                 };
 
-                                runnable.run(update, &mut buff);
+                                runnable.run(Ev(update), &mut buff);
 
                                 if !buff.is_empty() {
                                     for e in buff.drain(0..) {
                                         match e {
-                                            Key(_, _, Some(raw)) => {
+                                            Ev(Key(_, _, Some(raw))) => {
                                                 sink.write_event(&raw).unwrap();
                                             }
 
-                                            Key(c, m, None) => {
+                                            Ev(Key(c, m, None)) => {
                                                 sink.write_event(&InputEvent {
                                                     time: TimeVal::try_from(SystemTime::now())
                                                         .unwrap(),
@@ -122,16 +122,16 @@ pub fn run<'a, TRun: Runnable<Update<InputEvent>>>(runnable: &mut TRun) -> Resul
                 Some(libc::EINTR) => {
                     use crate::Update::*;
 
-                    runnable.run(Tick, &mut buff);
+                    runnable.run(Ev(Tick), &mut buff);
 
                     if !buff.is_empty() {
                         for e in buff.drain(0..) {
                             match e {
-                                Key(_, _, Some(raw)) => {
+                                Ev(Key(_, _, Some(raw))) => {
                                     sink.write_event(&raw).unwrap();
                                 }
 
-                                Key(c, m, None) => {
+                                Ev(Key(c, m, None)) => {
                                     sink.write_event(&InputEvent {
                                         time: TimeVal::try_from(SystemTime::now()).unwrap(),
                                         event_type: EventType::EV_KEY,

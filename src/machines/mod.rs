@@ -1,7 +1,7 @@
 #![allow(unused_variables)]
 #![allow(unused_mut)]
 
-use self::key_maps::KeyMaps;
+use self::{key_maps::KeyMaps, runner::{Ev,Ev::*}};
 use crate::{common::Update, common::Update::*};
 use bitmaps::{Bitmap, Bits};
 use std::collections::{vec_deque::*, HashMap};
@@ -21,14 +21,13 @@ pub mod runner;
 mod runer_test;
 
 
-
-pub struct RunRef<TEv> {
+pub struct RunRef<TUp> {
     tag: &'static str,
-    inner: Box<dyn Runnable<TEv>>
+    inner: Box<dyn Runnable<TUp>>
 }
 
-impl<TEv> RunRef<TEv> {
-    pub fn new<T: 'static + Runnable<TEv>>(tag: &'static str, inner: T) -> RunRef<TEv> {
+impl<TUp> RunRef<TUp> {
+    pub fn new<TInner: 'static + Runnable<TUp>>(tag: &'static str, inner: TInner) -> RunRef<TUp> {
         RunRef {
             tag,
             inner: Box::new(inner)
@@ -36,7 +35,7 @@ impl<TEv> RunRef<TEv> {
     }
 }
 
-impl<T> std::fmt::Debug for RunRef<T> {
+impl<TUp> std::fmt::Debug for RunRef<TUp> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.tag)
     }
@@ -48,8 +47,8 @@ impl<T> std::fmt::Debug for RunRef<T> {
 type Sink<TEv> = VecDeque<TEv>;
 
 
-pub trait Runnable<TEv> {
-    fn run(&mut self, ev: TEv, sink: &mut Sink<TEv>) -> ();
+pub trait Runnable<TUp> {
+    fn run(&mut self, ev: Ev<TUp>, sink: &mut Sink<Ev<TUp>>) -> ();
 }
 
 pub type MachineFac<TEv> = Box<dyn Fn() -> MachineRef<TEv>>;
@@ -82,39 +81,45 @@ pub fn gather_map<T, T2: Bits>(event: &Update<T>, map: &mut Bitmap<T2>) {
 
 use super::Movement::*;
 
-impl<TRaw, TSelf> CanMask<Update<TRaw>> for TSelf
+impl<TRaw, TSelf> CanMask<Ev<Update<TRaw>>> for TSelf
 where
     TSelf: HasMaps,
 {
-    fn mask(&mut self, codes: &[u16], sink: &mut Sink<Update<TRaw>>) {
+    fn mask(&mut self, codes: &[u16], sink: &mut Sink<Ev<Update<TRaw>>>) {
         for c in codes {
             let maskable = !self.maps().mask.set(*c as usize, true);
 
             if maskable && self.maps().outp.get(*c as usize) {
-                self.emit(Key(*c, Up, None), sink);
+                self.emit(Ev(Key(*c, Up, None)), sink);
             }
         }
     }
 
-    fn unmask(&mut self, codes: &[u16], sink: &mut Sink<Update<TRaw>>) {
+    fn unmask(&mut self, codes: &[u16], sink: &mut Sink<Ev<Update<TRaw>>>) {
         for c in codes {
             let unmaskable = self.maps().mask.set(*c as usize, false);
 
             if unmaskable && self.maps().inp.get(*c as usize) && !self.maps().outp.get(*c as usize)
             {
-                self.emit(Key(*c, Down, None), sink);
+                self.emit(Ev(Key(*c, Down, None)), sink);
             }
         }
     }
 }
 
-impl<TRaw, TSelf> CanEmit<Update<TRaw>> for TSelf
+
+impl<TRaw, TSelf> CanEmit<Ev<Update<TRaw>>> for TSelf
 where
     TSelf: HasMaps,
 {
-    fn emit(&mut self, ev: Update<TRaw>, sink: &mut Sink<Update<TRaw>>) {
-        gather_map(&ev, &mut self.maps().outp);
-        sink.push_back(ev);
+    fn emit(&mut self, ev: Ev<Update<TRaw>>, sink: &mut Sink<Ev<Update<TRaw>>>) {
+        match &ev {
+            Ev::Ev(up) => {
+                gather_map(&up, &mut self.maps().outp);
+                sink.push_back(ev)
+            },
+            _ => {}
+        }
     }
 }
 

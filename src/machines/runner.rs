@@ -2,42 +2,62 @@ use std::collections::VecDeque;
 
 use super::{RunRef, Runnable, Sink};
 
-pub struct Runner<TEv>
-{
-    active: Vec<RunRef<TEv>>,
-    buff1: VecDeque<TEv>,
-    buff2: VecDeque<TEv>,
+#[derive(Debug)]
+pub enum Ev<TUp> {
+    Ev(TUp),
+    Spawn(RunRef<TUp>),
+    Die
 }
 
-impl<TEv> Runner<TEv>
+pub struct Runner<TUp>
 {
-    pub fn new(active: Vec<RunRef<TEv>>) -> Runner<TEv> {
+    active: Vec<RunRef<TUp>>,
+    buff1: VecDeque<Ev<TUp>>,
+    buff2: VecDeque<Ev<TUp>>,
+    buff3: VecDeque<Ev<TUp>>,
+}
+
+impl<T> Runner<T>
+{
+    pub fn new(active: Vec<RunRef<T>>) -> Runner<T> {
         Runner {
             active,
             buff1: VecDeque::new(),
             buff2: VecDeque::new(),
+            buff3: VecDeque::new(),
         }
     }
 }
 
-impl<TEv> Runnable<TEv> for Runner<TEv>
+impl<TUp> Runnable<TUp> for Runner<TUp>
 where
-    TEv: std::fmt::Debug,
+    TUp: std::fmt::Debug,
 {
-    fn run(&mut self, ev: TEv, sink: &mut Sink<TEv>) {
-        let mut input = &mut self.buff1;
-        let mut output = &mut self.buff2;
+    fn run(&mut self, ev: Ev<TUp>, sink: &mut Sink<Ev<TUp>>) {
+        let mut buff1 = &mut self.buff1;
+        let mut buff2 = &mut self.buff2;
+        let mut buff3 = &mut self.buff3;
 
-        input.push_back(ev);
+        buff1.push_back(ev);
 
         for m in self.active.iter_mut() {
-            for e in input.drain(0..) {
-                m.inner.run(e, output);
+            for e in buff1.drain(0..) {
+
+                m.inner.run(e, buff2);
+
+                for e2 in buff2.drain(0..) {
+
+                    match e2 {
+                        Ev::Ev(_) => buff3.push_back(e2),
+                        Ev::Spawn(_) => (),
+                        Ev::Die => ()
+                    }
+                }
             }
 
-            input.extend(output.drain(0..));
+            buff1.extend(buff3.drain(0..));
         }
 
-        sink.extend(input.drain(0..));
+        sink.extend(buff1.drain(0..));
     }
 }
