@@ -18,7 +18,7 @@ pub mod runner;
 
 #[cfg(test)]
 #[path = "./runner_test.rs"]
-mod runer_test;
+mod runner_test;
 
 
 pub struct RunRef<TUp> {
