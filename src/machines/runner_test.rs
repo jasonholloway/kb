@@ -1,5 +1,10 @@
-use super::*;
-use runner::{Runner,Ev};
+use std::collections::VecDeque;
+
+use crate::machines::{Runnable, Sink};
+
+use super::{Runner,Ev};
+use super::super::RunRef;
+use Ev::*;
 
 #[test]
 fn percolates() {

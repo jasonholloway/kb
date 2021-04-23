@@ -16,10 +16,6 @@ pub mod print_keys;
 
 pub mod runner;
 
-#[cfg(test)]
-#[path = "./runner_test.rs"]
-mod runner_test;
-
 
 pub struct RunRef<TUp> {
     tag: &'static str,

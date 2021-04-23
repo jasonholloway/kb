@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "./runner_test.rs"]
+mod runner_test;
+
 use std::collections::VecDeque;
 
 use super::{RunRef, Runnable, Sink};
