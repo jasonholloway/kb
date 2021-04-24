@@ -5,7 +5,7 @@ mod glob;
 #[cfg(test)]
 mod test;
 
-use crate::{Movement::*, Update::*, common::Update, machines::{Runnable, runner::Ev}};
+use crate::{Movement::*, Update::*, common::Update, machines::{CanEmit, Runnable, runner::Ev}, sink::Sink};
 use Ev::*;
 use evdev_rs::enums::*;
 use evdev_rs::*;
@@ -25,9 +25,26 @@ enum Mode {
     Sync,
 }
 
-pub fn run<'a, TCtx, TRun: Runnable<(), Ev<TCtx, Update<InputEvent>>>>(dev_glob: &str, runnable: &mut TRun) -> Result<(), Error> {
 
-    let dev_path = find_file(dev_glob).unwrap();
+pub struct OuterCtx<TCtx> {
+    buff: VecDeque<Ev<TCtx,Update<InputEvent>>>
+}
+
+impl<TCtx> CanEmit<Ev<TCtx,Update<InputEvent>>> for OuterCtx<TCtx> {
+    fn emit(&mut self, ev: Ev<TCtx,Update<InputEvent>>, sink: &mut Sink<Ev<TCtx,Update<InputEvent>>>) {
+        self.buff.push_back(ev);
+    }
+}
+
+
+
+
+pub fn run<'a, TCtx, TRun>(dev_pattern: &str, runnable: &mut TRun) -> Result<(), Error>
+where
+    TRun: Runnable<(), Ev<TCtx, Update<InputEvent>>>
+{
+
+    let dev_path = find_file(dev_pattern).unwrap();
     dbg!(&dev_path);
     
     let mut source = open_device(&dev_path).unwrap();

@@ -48,7 +48,6 @@ where
 {
     Runner::new(vec![
         RunRef::new("printBefore", Machine::new(PrintKeys::new(1, 31))),
-        // RunRef::new("print2", Machine::new(PrintKeys::new(1, 33))),
         // RunRef::new("big", Machine::new(BigMachine::new())),
         RunRef::new("mode", Machine::new(ModeMachine::new())),
         RunRef::new("lead", Machine::new(LeadMachine::new())),
@@ -65,13 +64,3 @@ pub enum Event<'a, R> {
     In(&'a Update<R>),
     Out(&'a Update<R>),
 }
-
-
-
-// pub fn fac<TCtx, TEv, TMac, TFn>(f: TFn) -> MachineFac<TEv>
-// where
-//     TMac: 'static + Runnable<TCtx,TEv>,
-//     TFn: 'static + Fn() -> TMac,
-// {
-//     Box::new(move || Box::new(f()))
-// }

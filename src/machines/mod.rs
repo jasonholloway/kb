@@ -1,8 +1,8 @@
 #![allow(unused_variables)]
 #![allow(unused_mut)]
 
-use self::key_maps::KeyMaps;
-use std::collections::vec_deque::*;
+#[cfg(test)]
+mod test;
 
 pub mod runner;
 pub mod key_maps;
@@ -13,6 +13,10 @@ pub mod dynamic_machine;
 pub mod lead_machine;
 pub mod mode_machine;
 pub mod print_keys;
+
+
+use self::key_maps::KeyMaps;
+use std::collections::vec_deque::*;
 
 
 pub struct RunRef<TCtx, TEv> {
