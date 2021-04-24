@@ -1,3 +1,6 @@
+use typenum::*;
+use bitmaps::Bitmap;
+
 use super::{CanEmit, HasMaps, Runnable, Sink, runner::{Ev,Ev::*}};
 use crate::{common::Update, Update::*};
 use std::fmt::Debug;
@@ -16,8 +19,7 @@ impl PrintKeys {
         }
     }
 
-    fn print<TCtx, TRaw>(&self, x: &mut TCtx, ev: &Update<TRaw>)
-        where TCtx: HasMaps
+    fn print<TRaw>(&self, bits: &Bitmap<U1024>, ev: &Update<TRaw>)
     {
         let new_code = if let Key(c, _, _) = ev { *c } else { 0 as u16 };
 
@@ -25,7 +27,7 @@ impl PrintKeys {
 
         print!("[");
         let mut first = true;
-        for c in x.maps().outp.into_iter() {
+        for c in bits.into_iter() {
             if !first {
                 print!(", ");
             }
@@ -49,10 +51,12 @@ where
     TRaw: Debug
 {
     fn run(&mut self, x: &mut TCtx, ev: Ev<TCtx,Update<TRaw>>, sink: &mut Sink<Ev<TCtx,Update<TRaw>>>) {
+        let maps = x.maps();
+        
         match ev {
             Ev(up) => {
                 if let Key(_, _, _) = up {
-                    self.print(x, &up);
+                    self.print(&maps.pre, &up);
                 }
 
                 x.emit(Ev(up), sink);

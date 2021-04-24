@@ -12,7 +12,7 @@ extern crate spectral;
 
 
 use common::*;
-use machines::{RunRef, machine::{Ctx, Machine}, print_keys::PrintKeys, runner::{Ev, Runner}};
+use machines::{RunRef, lead_machine::LeadMachine, machine::{Ctx, Machine}, mode_machine::ModeMachine, print_keys::PrintKeys, runner::{Ev, Runner}};
 use std::fmt::Debug;
 
 #[cfg(windows)]
@@ -32,8 +32,10 @@ pub fn main() {
         if #[cfg(windows)] {
             windows::run(create_handler).unwrap();
         } else if #[cfg(unix)] {
-            const DEV_FILE_GLOB: &str = "/dev/input/by-path/*-event-kbd";
-            unix::run(DEV_FILE_GLOB, &mut create_runner()).unwrap();
+            unix::run(
+                "/dev/input/by-path/*-event-kbd",
+                &mut create_runner()
+            ).unwrap();
         } else {
             null::run(&mut handler, &buff).unwrap();
         }
@@ -45,11 +47,12 @@ where
     TRaw: 'static + Debug,
 {
     Runner::new(vec![
-        RunRef::new("print1", Machine::new(PrintKeys::new(1, 31))),
-        RunRef::new("print2", Machine::new(PrintKeys::new(1, 33))),
+        RunRef::new("printBefore", Machine::new(PrintKeys::new(1, 31))),
+        // RunRef::new("print2", Machine::new(PrintKeys::new(1, 33))),
         // RunRef::new("big", Machine::new(BigMachine::new())),
-        // RunRef::new("mode", Machine::new(ModeMachine::new())),
-        // RunRef::new("lead", Machine::new(LeadMachine::new()))
+        RunRef::new("mode", Machine::new(ModeMachine::new())),
+        RunRef::new("lead", Machine::new(LeadMachine::new())),
+        RunRef::new("printAfter", Machine::new(PrintKeys::new(4, 32))),
     ])
 }
 

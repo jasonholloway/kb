@@ -67,7 +67,7 @@ impl<TCtx, TRaw> CanMask<Ev<TCtx,Update<TRaw>>> for Ctx
         for c in codes {
             let maskable = !self.maps.mask.set(*c as usize, true);
 
-            if maskable && self.maps.outp.get(*c as usize) {
+            if maskable && self.maps.post.get(*c as usize) {
                 self.emit(Ev(Key(*c, Up, None)), sink);
             }
         }
@@ -79,7 +79,7 @@ impl<TCtx, TRaw> CanMask<Ev<TCtx,Update<TRaw>>> for Ctx
         for c in codes {
             let unmaskable = self.maps.mask.set(*c as usize, false);
 
-            if unmaskable && self.maps.inp.get(*c as usize) && !self.maps.outp.get(*c as usize)
+            if unmaskable && self.maps.pre.get(*c as usize) && !self.maps.post.get(*c as usize)
             {
                 self.emit(Ev(Key(*c, Down, None)), sink);
             }

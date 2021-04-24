@@ -5,26 +5,26 @@ use crate::common::Update;
 use crate::common::Movement;
 
 pub struct KeyMaps {
-    pub inp: Bitmap<U1024>,
-    pub outp: Bitmap<U1024>,
+    pub pre: Bitmap<U1024>,
+    pub post: Bitmap<U1024>,
     pub mask: Bitmap<U1024>,
 }
 
 impl KeyMaps {
     pub fn new() -> KeyMaps {
         KeyMaps {
-            inp: Bitmap::new(),
-            outp: Bitmap::new(),
+            pre: Bitmap::new(),
+            post: Bitmap::new(),
             mask: Bitmap::new(),
         }
     }
 
     pub fn track_in<TRaw>(&mut self, up: &Update<TRaw>) {
-        Self::gather_map(up, &mut self.inp);
+        Self::gather_map(up, &mut self.pre);
     }
 
     pub fn track_out<TRaw>(&mut self, up: &Update<TRaw>) {
-        Self::gather_map(up, &mut self.outp);
+        Self::gather_map(up, &mut self.post);
     }
 
     fn gather_map<T, T2: Bits>(event: &Update<T>, map: &mut Bitmap<T2>) -> () {
