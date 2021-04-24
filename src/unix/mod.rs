@@ -1,9 +1,6 @@
 mod dev_info;
 mod timer;
-
-#[cfg(test)]
-#[path = "./test.rs"]
-mod test;
+mod glob;
 
 use crate::{Movement::*, Update::*, common::Update, machines::{Runnable, runner::Ev}};
 use Ev::*;
@@ -13,24 +10,22 @@ use std::convert::TryFrom;
 use std::time::Duration;
 use std::time::SystemTime;
 use std::{
+    error,
     collections::VecDeque,
     fs::File,
     io::{Error, ErrorKind::*},
 };
+use glob::Glob;
 
 enum Mode {
     Read,
     Sync,
 }
 
-// const DEV_PATH: &str = "/dev/input/event18";
-const DEV_PATH: &str = "/dev/input/by-path/platform-i8042-serio-0-event-kbd";
+pub fn run<'a, TCtx, TRun: Runnable<(), Ev<TCtx, Update<InputEvent>>>>(dev_glob: &str, runnable: &mut TRun) -> Result<(), Error> {
 
-pub fn run<'a, TCtx, TRun: Runnable<(), Ev<TCtx, Update<InputEvent>>>>(runnable: &mut TRun) -> Result<(), Error> {
-    let mut buff = VecDeque::new();
-
-    let mut source = open_device(DEV_PATH).unwrap();
-
+    let dev_path = find_file(dev_glob).unwrap();
+    let mut source = open_device(dev_path).unwrap();
     source.grab(GrabMode::Grab).unwrap();
 
     let sink = UInputDevice::create_from_device(&source).unwrap();
@@ -38,6 +33,7 @@ pub fn run<'a, TCtx, TRun: Runnable<(), Ev<TCtx, Update<InputEvent>>>>(runnable:
     timer::catch_alrm().unwrap();
     let _timer = timer::set_itimer(Duration::from_millis(40)).unwrap();
 
+    let mut buff = VecDeque::new();
     let mut mode: Mode = Mode::Read;
 
     loop {
@@ -187,4 +183,14 @@ pub fn run<'a, TCtx, TRun: Runnable<(), Ev<TCtx, Update<InputEvent>>>>(runnable:
 
 fn open_device(path: &str) -> Result<Device, Error> {
     return Device::new_from_fd(File::open(&path).unwrap());
+}
+
+fn find_file(pattern: &str) -> Result<&'static str, Box<dyn error::Error>> {
+    Glob::glob(pattern)
+        .and_then(|res| {
+            match res.paths.first() {
+                Some(&path) => Ok(path),
+                None => Err(Error::new(NotFound, "can't glob device file").into())
+            }
+        })
 }

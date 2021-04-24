@@ -22,12 +22,14 @@ mod machines;
 mod null;
 mod sink;
 
+
 pub fn main() {
     cfg_if::cfg_if! {
         if #[cfg(windows)] {
             windows::run(create_handler).unwrap();
         } else if #[cfg(unix)] {
-            unix::run(&mut create_runner()).unwrap();
+            const DEV_FILE_GLOB: &str = "/dev/input/by-path/*-event-kbd";
+            unix::run(DEV_FILE_GLOB, &mut create_runner()).unwrap();
         } else {
             null::run(&mut handler, &buff).unwrap();
         }
