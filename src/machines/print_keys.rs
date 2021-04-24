@@ -1,11 +1,9 @@
-use super::{Runnable, Sink, gather_map, runner::{Ev,Ev::*}};
+use super::{CanEmit, HasMaps, Runnable, Sink, runner::{Ev,Ev::*}};
 use crate::{common::Update, Update::*};
-use bitmaps::Bitmap;
 use std::fmt::Debug;
-use typenum::*;
+
 
 pub struct PrintKeys {
-    out_map: Bitmap<U1024>,
     tabs: u8,
     colour: u8,
 }
@@ -13,20 +11,21 @@ pub struct PrintKeys {
 impl PrintKeys {
     pub fn new(tabs: u8, colour: u8) -> PrintKeys {
         PrintKeys {
-            out_map: Bitmap::new(),
             tabs,
-            colour,
+            colour
         }
     }
 
-    fn print<TRaw>(&self, ev: &Update<TRaw>) {
+    fn print<TCtx, TRaw>(&self, x: &mut TCtx, ev: &Update<TRaw>)
+        where TCtx: HasMaps
+    {
         let new_code = if let Key(c, _, _) = ev { *c } else { 0 as u16 };
 
         print!("{}", (0..self.tabs).map(|_| '\t').collect::<String>());
 
         print!("[");
         let mut first = true;
-        for c in self.out_map.into_iter() {
+        for c in x.maps().outp.into_iter() {
             if !first {
                 print!(", ");
             }
@@ -44,20 +43,19 @@ impl PrintKeys {
     }
 }
 
-impl<TRaw> Runnable<Update<TRaw>> for PrintKeys
+impl<TCtx, TRaw> Runnable<TCtx, Ev<TCtx, Update<TRaw>>> for PrintKeys
 where
+    TCtx: CanEmit<Ev<TCtx,Update<TRaw>>> + HasMaps,
     TRaw: Debug
 {
-    fn run(&mut self, ev: Ev<Update<TRaw>>, sink: &mut Sink<Ev<Update<TRaw>>>) {
+    fn run(&mut self, x: &mut TCtx, ev: Ev<TCtx,Update<TRaw>>, sink: &mut Sink<Ev<TCtx,Update<TRaw>>>) {
         match ev {
             Ev(up) => {
-                gather_map(&up, &mut self.out_map);
-
                 if let Key(_, _, _) = up {
-                    self.print(&up);
+                    self.print(x, &up);
                 }
 
-                sink.push_back(Ev(up))
+                x.emit(Ev(up), sink);
             }
             _ => ()
         }

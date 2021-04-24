@@ -1,4 +1,12 @@
-use crate::{Movement::*, Update::*, common::Update, machines::{Runnable, runner::Ev::*}};
+mod dev_info;
+mod timer;
+
+#[cfg(test)]
+#[path = "./test.rs"]
+mod test;
+
+use crate::{Movement::*, Update::*, common::Update, machines::{Runnable, runner::Ev}};
+use Ev::*;
 use evdev_rs::enums::*;
 use evdev_rs::*;
 use std::convert::TryFrom;
@@ -10,9 +18,6 @@ use std::{
     io::{Error, ErrorKind::*},
 };
 
-mod dev_info;
-mod timer;
-
 enum Mode {
     Read,
     Sync,
@@ -21,7 +26,7 @@ enum Mode {
 // const DEV_PATH: &str = "/dev/input/event18";
 const DEV_PATH: &str = "/dev/input/by-path/platform-i8042-serio-0-event-kbd";
 
-pub fn run<'a, TRun: Runnable<Update<InputEvent>>>(runnable: &mut TRun) -> Result<(), Error> {
+pub fn run<'a, TCtx, TRun: Runnable<(), Ev<TCtx, Update<InputEvent>>>>(runnable: &mut TRun) -> Result<(), Error> {
     let mut buff = VecDeque::new();
 
     let mut source = open_device(DEV_PATH).unwrap();
@@ -55,7 +60,7 @@ pub fn run<'a, TRun: Runnable<Update<InputEvent>>>(runnable: &mut TRun) -> Resul
                                     }
                                 };
 
-                                runnable.run(Ev(update), &mut buff);
+                                runnable.run(&mut (), Ev(update), &mut buff);
 
                                 if !buff.is_empty() {
                                     for e in buff.drain(0..) {
@@ -122,7 +127,7 @@ pub fn run<'a, TRun: Runnable<Update<InputEvent>>>(runnable: &mut TRun) -> Resul
                 Some(libc::EINTR) => {
                     use crate::Update::*;
 
-                    runnable.run(Ev(Tick), &mut buff);
+                    runnable.run(&mut (), Ev(Tick), &mut buff);
 
                     if !buff.is_empty() {
                         for e in buff.drain(0..) {

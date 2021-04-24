@@ -7,24 +7,25 @@ use std::collections::VecDeque;
 use super::{RunRef, Runnable, Sink};
 
 #[derive(Debug)]
-pub enum Ev<TUp> {
+pub enum Ev<TCtx,TUp> {
     Ev(TUp),
-    Spawn(RunRef<TUp>),
+    Spawn(RunRef<(),Ev<TCtx,TUp>>),
     Die
 }
 
-pub struct Runner<TUp>
+//below TUp needs purging/replacing with TEv
+pub struct Runner<TEv>
 {
-    pending: VecDeque<RunRef<TUp>>,
-    seen: VecDeque<RunRef<TUp>>,
-    buff1: VecDeque<Ev<TUp>>,
-    buff2: VecDeque<Ev<TUp>>,
-    buff3: VecDeque<Ev<TUp>>,
+    pending: VecDeque<RunRef<(),TEv>>,
+    seen: VecDeque<RunRef<(),TEv>>,
+    buff1: VecDeque<TEv>,
+    buff2: VecDeque<TEv>,
+    buff3: VecDeque<TEv>,
 }
 
-impl<T> Runner<T>
+impl<TEv> Runner<TEv>
 {
-    pub fn new(active: Vec<RunRef<T>>) -> Runner<T> {
+    pub fn new(active: Vec<RunRef<(),TEv>>) -> Runner<TEv> {
         Runner {
             pending: VecDeque::from(active),
             seen: VecDeque::new(),
@@ -35,11 +36,11 @@ impl<T> Runner<T>
     }
 }
 
-impl<TUp> Runnable<TUp> for Runner<TUp>
+impl<TCtx,TUp> Runnable<(),Ev<TCtx,TUp>> for Runner<Ev<TCtx,TUp>>
 where
     TUp: std::fmt::Debug,
 {
-    fn run(&mut self, ev: Ev<TUp>, sink: &mut Sink<Ev<TUp>>) {
+    fn run(&mut self, x: &mut (), ev: Ev<TCtx,TUp>, sink: &mut Sink<Ev<TCtx,TUp>>) {
         let mut buff1 = &mut self.buff1;
         let mut buff2 = &mut self.buff2;
         let mut buff3 = &mut self.buff3;
@@ -58,7 +59,7 @@ where
             let mut requeue = true;
 
             for e1 in buff1.drain(0..) {
-                m.inner.run(e1, buff2);
+                m.inner.run(x, e1, buff2);
 
                 for e2 in buff2.drain(0..) {
                     match e2 {
@@ -66,7 +67,7 @@ where
                             buff3.push_back(e2);
                         },
                         Ev::Spawn(m2) => {
-                            pending.push_front(m2)
+                            pending.push_front(m2);
                         },
                         Ev::Die => {
                             requeue = false;

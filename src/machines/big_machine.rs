@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use crate::common::{Movement::*, Update, Update::*};
 use crate::Action::*;
-use super::{CanEmit, CanMask, HasMaps, Runnable, Sink, gather_map, key_maps::KeyMaps, runner::{Ev,Ev::*}};
+use super::{CanEmit, CanMask, Runnable, Sink, runner::{Ev,Ev::*}};
 
 
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -15,39 +15,30 @@ enum Mode {
     AltShiftK
 }
 
-
 pub struct BigMachine {
-    mode: Mode,
-    maps: KeyMaps,
+    mode: Mode
 }
+
 
 impl BigMachine {
     pub fn new() -> BigMachine {
         BigMachine {
             mode: Mode::Root,
-            maps: KeyMaps::new(),
         }
     }
 }
 
-impl HasMaps for BigMachine {
-    fn maps(&mut self) -> &mut KeyMaps {
-        &mut self.maps
-    }
-}
-
-impl<TRaw> Runnable<Update<TRaw>>
+impl<TCtx,TRaw> Runnable<TCtx, Ev<TCtx,Update<TRaw>>>
     for BigMachine
 where
     TRaw: Debug,
+    TCtx: CanEmit<Ev<TCtx,Update<TRaw>>> + CanMask<Ev<TCtx,Update<TRaw>>>
 {
-    fn run<'a>(&mut self, ev: Ev<Update<TRaw>>, sink: &'a mut Sink<Ev<Update<TRaw>>>) -> () {
+    fn run<'a>(&mut self, x: &mut TCtx, ev: Ev<TCtx,Update<TRaw>>, sink: &'a mut Sink<Ev<TCtx,Update<TRaw>>>) -> () {
         use Mode::*;
 
         match ev {
             Ev(up) => {
-                gather_map(&up, &mut self.maps.inp);
-
                 let prev_mode = self.mode;
 
                 let next_mode = match (prev_mode, &up) {
@@ -84,37 +75,37 @@ where
                 let action = match (prev_mode, next_mode, &up) {
 
                     (_, AltShiftSpace, Key(57, Down, _)) => {
-                        self.mask(&[42, 56], sink);
-                        self.emit(Ev(Key(28, Down, None)), sink);
+                        x.mask(&[42, 56], sink);
+                        x.emit(Ev(Key(28, Down, None)), sink);
                         Take
                     },
                     (AltShiftSpace, _, Key(57, Up, _)) => {
-                        self.emit(Ev(Key(28, Up, None)), sink);
-                        self.unmask(&[42, 56], sink);
+                        x.emit(Ev(Key(28, Up, None)), sink);
+                        x.unmask(&[42, 56], sink);
                         Take
                     },
 
 
                     (_, AltShiftJ, Key(36, Down, _)) => {
-                        self.mask(&[42, 56], sink);
-                        self.emit(Ev(Key(108, Down, None)), sink);
+                        x.mask(&[42, 56], sink);
+                        x.emit(Ev(Key(108, Down, None)), sink);
                         Take
                     },
                     (AltShiftJ, _, Key(36, Up, _)) => {
-                        self.emit(Ev(Key(108, Up, None)), sink);
-                        self.unmask(&[42, 56], sink);
+                        x.emit(Ev(Key(108, Up, None)), sink);
+                        x.unmask(&[42, 56], sink);
                         Take
                     },
 
 
                     (_, AltShiftK, Key(37, Down, _)) => {
-                        self.mask(&[42, 56], sink); //should do this on entry/exit rather than each keypress
-                        self.emit(Ev(Key(103, Down, None)), sink);
+                        x.mask(&[42, 56], sink); //should do this on entry/exit rather than each keypress
+                        x.emit(Ev(Key(103, Down, None)), sink);
                         Take
                     },
                     (AltShiftK, _, Key(37, Up, _)) => {
-                        self.emit(Ev(Key(103, Up, None)), sink);
-                        self.unmask(&[42, 56], sink);
+                        x.emit(Ev(Key(103, Up, None)), sink);
+                        x.unmask(&[42, 56], sink);
                         Take
                     },
 
@@ -125,7 +116,7 @@ where
                     Skip => {
                         if let Key(_, _, raw) = &up {
                             match raw {
-                                Some(_) => self.emit(Ev(up), sink),
+                                Some(_) => x.emit(Ev(up), sink),
                                 None => {}
                             }
                         }

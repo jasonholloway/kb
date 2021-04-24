@@ -1,38 +1,30 @@
-use super::{CanEmit, HasMaps, Runnable, Sink, gather_map, key_maps::KeyMaps, runner::{Ev,Ev::*}};
+use super::{CanEmit, Runnable, Sink, runner::{Ev,Ev::*}};
 use crate::common::{Act::*, Mode, Mode::*};
 use crate::common::{Movement::*, *};
 use std::fmt::Debug;
 
 pub struct LeadMachine {
     mode: Mode,
-    maps: KeyMaps,
 }
 
 impl LeadMachine {
     pub fn new() -> LeadMachine {
         LeadMachine {
             mode: Root,
-            maps: KeyMaps::new(),
         }
     }
 }
 
-impl HasMaps for LeadMachine {
-    fn maps(&mut self) -> &mut KeyMaps {
-        &mut self.maps
-    }
-}
 
-impl<TRaw> Runnable<Update<TRaw>> for LeadMachine
+impl<TRaw, TCtx> Runnable<TCtx, Ev<TCtx,Update<TRaw>>> for LeadMachine
 where
+    TCtx: CanEmit<Ev<TCtx,Update<TRaw>>>,
     TRaw: Debug
 {
-    fn run<'a>(&mut self, ev: Ev<Update<TRaw>>, sink: &'a mut Sink<Ev<Update<TRaw>>>) -> () {
+    fn run<'a>(&mut self, x: &mut TCtx, ev: Ev<TCtx,Update<TRaw>>, sink: &'a mut Sink<Ev<TCtx,Update<TRaw>>>) -> () {
         match &ev {
             Ev(up) => {
                 use Update::*;
-
-                gather_map(&up, &mut self.maps.inp);
 
                 let next = match (self.mode, &up) {
                     (Root, On(Mode("MAltShift"))) => [Then(Mode("AltShift"))].iter(),
@@ -76,12 +68,12 @@ where
                         }
 
                         Emit(c, m) => {
-                            self.emit(Ev(Key(*c, *m, None)), sink);
+                            x.emit(Ev(Key(*c, *m, None)), sink);
                         }
 
                         Then(new_mode) => {
-                            self.emit(Ev(Off(self.mode)), sink);
-                            self.emit(Ev(On(*new_mode)), sink);
+                            x.emit(Ev(Off(self.mode)), sink);
+                            x.emit(Ev(On(*new_mode)), sink);
                             self.mode = *new_mode;
 
                             println!("\t\t{:?}", *new_mode);
@@ -94,7 +86,7 @@ where
                 }
 
                 if reemit {
-                    self.emit(ev, sink);
+                    x.emit(ev, sink);
                 }
             }
 

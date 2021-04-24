@@ -8,8 +8,8 @@ extern crate velcro;
 extern crate libc;
 
 use common::*;
-use machines::{MachineFac, RunRef, Runnable, big_machine::BigMachine, lead_machine::LeadMachine, mode_machine::ModeMachine, print_keys::PrintKeys, runner::Runner};
-use std::{fmt::Debug};
+use machines::{RunRef, machine::{Ctx, Machine}, print_keys::PrintKeys, runner::{Ev, Runner}};
+use std::fmt::Debug;
 
 #[cfg(windows)]
 mod windows;
@@ -34,16 +34,16 @@ pub fn main() {
     }
 }
 
-fn create_runner<'a, TRaw>() -> Runner<Update<TRaw>>
+fn create_runner<'a, TRaw>() -> Runner<Ev<Ctx,Update<TRaw>>>
 where
     TRaw: 'static + Debug,
 {
     Runner::new(vec![
-        RunRef::new("print1", PrintKeys::new(1, 31)),
-        RunRef::new("print2", PrintKeys::new(4, 35)),
-        RunRef::new("big", BigMachine::new()),
-        RunRef::new("mode", ModeMachine::new()),
-        RunRef::new("lead", LeadMachine::new())
+        RunRef::new("print1", Machine::new(PrintKeys::new(1, 31))),
+        RunRef::new("print2", Machine::new(PrintKeys::new(1, 33))),
+        // RunRef::new("big", Machine::new(BigMachine::new())),
+        // RunRef::new("mode", Machine::new(ModeMachine::new())),
+        // RunRef::new("lead", Machine::new(LeadMachine::new()))
     ])
 }
 
@@ -59,10 +59,10 @@ pub enum Event<'a, R> {
 
 
 
-pub fn fac<TEv, TMac, TFn>(f: TFn) -> MachineFac<TEv>
-where
-    TMac: 'static + Runnable<TEv>,
-    TFn: 'static + Fn() -> TMac,
-{
-    Box::new(move || Box::new(f()))
-}
+// pub fn fac<TCtx, TEv, TMac, TFn>(f: TFn) -> MachineFac<TEv>
+// where
+//     TMac: 'static + Runnable<TCtx,TEv>,
+//     TFn: 'static + Fn() -> TMac,
+// {
+//     Box::new(move || Box::new(f()))
+// }
