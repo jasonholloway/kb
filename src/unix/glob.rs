@@ -33,7 +33,7 @@ impl Glob {
     }
 
     fn get_paths(result: glob_t) -> Result<Vec<&'static str>, str::Utf8Error> {
-        let ptrs = unsafe { slice::from_raw_parts(result.gl_pathv, 2) };
+        let ptrs = unsafe { slice::from_raw_parts(result.gl_pathv, result.gl_pathc) };
 
         ptrs.iter()
             .map(|ptr| unsafe { CStr::from_ptr(*ptr) })
@@ -44,6 +44,7 @@ impl Glob {
 
 impl Drop for Glob {
     fn drop(&mut self) {
+        println!("DROP!!!");
         unsafe {
             globfree(&mut self.result)
         }

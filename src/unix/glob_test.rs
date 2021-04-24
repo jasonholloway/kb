@@ -2,11 +2,10 @@ use super::Glob;
 
 #[test]
 fn globs() {
-    let found = Glob::glob("/dev/input/*vent{0,1,2}").unwrap();
+    let res = Glob::glob("/dev/input/*vent{0,1,2}").unwrap();
 
-    println!("{:?}", &found.paths);
+    dbg!("{:?}", &res.paths);
     
-    assert!(found.paths.len() > 0)
+    assert!(res.paths.len() > 0);
 }
-
 

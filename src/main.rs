@@ -7,6 +7,10 @@ extern crate velcro;
 #[cfg(unix)]
 extern crate libc;
 
+#[cfg(test)]
+extern crate spectral;
+
+
 use common::*;
 use machines::{RunRef, machine::{Ctx, Machine}, print_keys::PrintKeys, runner::{Ev, Runner}};
 use std::fmt::Debug;

@@ -2,6 +2,9 @@ mod dev_info;
 mod timer;
 mod glob;
 
+#[cfg(test)]
+mod test;
+
 use crate::{Movement::*, Update::*, common::Update, machines::{Runnable, runner::Ev}};
 use Ev::*;
 use evdev_rs::enums::*;
@@ -25,7 +28,9 @@ enum Mode {
 pub fn run<'a, TCtx, TRun: Runnable<(), Ev<TCtx, Update<InputEvent>>>>(dev_glob: &str, runnable: &mut TRun) -> Result<(), Error> {
 
     let dev_path = find_file(dev_glob).unwrap();
-    let mut source = open_device(dev_path).unwrap();
+    dbg!(&dev_path);
+    
+    let mut source = open_device(&dev_path).unwrap();
     source.grab(GrabMode::Grab).unwrap();
 
     let sink = UInputDevice::create_from_device(&source).unwrap();
@@ -185,11 +190,16 @@ fn open_device(path: &str) -> Result<Device, Error> {
     return Device::new_from_fd(File::open(&path).unwrap());
 }
 
-fn find_file(pattern: &str) -> Result<&'static str, Box<dyn error::Error>> {
+pub fn find_file(pattern: &str) -> Result<String, Box<dyn error::Error>> {
     Glob::glob(pattern)
         .and_then(|res| {
-            match res.paths.first() {
-                Some(&path) => Ok(path),
+            dbg!(&res.paths);
+
+            let found = res.paths.first()
+                .map(|s| s.to_string());
+
+            match found {
+                Some(s) => Ok(s),
                 None => Err(Error::new(NotFound, "can't glob device file").into())
             }
         })
