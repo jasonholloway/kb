@@ -12,7 +12,7 @@ extern crate spectral;
 
 
 use common::*;
-use machines::{RunRef, lead_machine::LeadMachine, machine::{Ctx, Machine}, mode_machine::ModeMachine, print_keys::PrintKeys, runner::{Ev, Runner}};
+use machines::{RunRef, lead_machine::LeadMachine, machine::Machine, mode_machine::ModeMachine, print_keys::PrintKeys, runner::Runner};
 use std::fmt::Debug;
 
 #[cfg(windows)]
@@ -24,7 +24,6 @@ mod unix;
 mod common;
 mod machines;
 mod null;
-mod sink;
 
 
 pub fn main() {
@@ -42,7 +41,7 @@ pub fn main() {
     }
 }
 
-fn create_runner<'a, TRaw>() -> Runner<Ev<Ctx<TRaw>,Update<TRaw>>>
+fn create_runner<'a, TRaw>() -> Runner<Ev<TRaw>>
 where
     TRaw: 'static + Debug,
 {
@@ -61,6 +60,6 @@ pub enum Action {
 }
 
 pub enum Event<'a, R> {
-    In(&'a Update<R>),
-    Out(&'a Update<R>),
+    In(&'a Ev<R>),
+    Out(&'a Ev<R>),
 }

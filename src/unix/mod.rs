@@ -5,7 +5,8 @@ mod glob;
 #[cfg(test)]
 mod test;
 
-use crate::{Movement::*, Update::*, common::Update, machines::{CanEmit, Runnable, runner::Ev}};
+use crate::{Movement::*, machines::{Runnable, Ctx}};
+use crate::common::Ev;
 use Ev::*;
 use evdev_rs::enums::*;
 use evdev_rs::*;
@@ -14,7 +15,6 @@ use std::time::Duration;
 use std::time::SystemTime;
 use std::{
     error,
-    collections::VecDeque,
     fs::File,
     io::{Error, ErrorKind::*},
 };
@@ -26,34 +26,9 @@ enum Mode {
 }
 
 
-pub struct OuterCtx<TCtx> {
-    buff: VecDeque<Ev<TCtx,Update<InputEvent>>>
-}
-
-impl<TCtx> OuterCtx<TCtx> {
-    pub fn new() -> OuterCtx<TCtx> {
-        OuterCtx {
-            buff: VecDeque::new()
-        }
-    }
-}
-
-impl<TCtx> CanEmit<Ev<TCtx,Update<InputEvent>>> for OuterCtx<TCtx> {
-    fn emit(&mut self, ev: Ev<TCtx,Update<InputEvent>>) {
-        self.buff.push_back(ev)
-    }
-
-    fn emit_many<T: IntoIterator<Item=Ev<TCtx,Update<InputEvent>>>>(&mut self, evs: T) {
-        self.buff.extend(evs)
-    }
-}
-
-
-
-
-pub fn run<'a, TCtx, TRun>(dev_pattern: &str, runnable: &mut TRun) -> Result<(), Error>
+pub fn run<'a, TRun>(dev_pattern: &str, runnable: &mut TRun) -> Result<(), Error>
 where
-    TRun: Runnable<OuterCtx<TCtx>, Ev<TCtx, Update<InputEvent>>>
+    TRun: Runnable<Ev<InputEvent>>
 {
 
     let dev_path = find_file(dev_pattern).unwrap();
@@ -70,7 +45,7 @@ where
 
     
     // let mut buff = VecDeque::new();
-    let mut ctx = OuterCtx::new();
+    let mut x = Ctx::new();
     let mut mode: Mode = Mode::Read;
 
     loop {
@@ -93,16 +68,16 @@ where
                                     }
                                 };
 
-                                runnable.run(&mut ctx, Ev(update));
+                                runnable.run(&mut x, update);
 
-                                if !ctx.buff.is_empty() {
-                                    for e in ctx.buff.drain(0..) {
+                                if !x.buff.is_empty() {
+                                    for e in x.buff.drain(0..) {
                                         match e {
-                                            Ev(Key(_, _, Some(raw))) => {
+                                            Key(_, _, Some(raw)) => {
                                                 sink.write_event(&raw).unwrap();
                                             }
 
-                                            Ev(Key(c, m, None)) => {
+                                            Key(c, m, None) => {
                                                 sink.write_event(&InputEvent {
                                                     time: TimeVal::try_from(SystemTime::now())
                                                         .unwrap(),
@@ -158,18 +133,16 @@ where
         match res {
             Result::Err(err) => match err.raw_os_error() {
                 Some(libc::EINTR) => {
-                    use crate::Update::*;
+                    runnable.run(&mut x, Tick);
 
-                    runnable.run(&mut ctx, Ev(Tick));
-
-                    if !ctx.buff.is_empty() {
-                        for e in ctx.buff.drain(0..) {
+                   if !x.buff.is_empty() {
+                        for e in x.buff.drain(0..) {
                             match e {
-                                Ev(Key(_, _, Some(raw))) => {
+                                Key(_, _, Some(raw)) => {
                                     sink.write_event(&raw).unwrap();
                                 }
 
-                                Ev(Key(c, m, None)) => {
+                                Key(c, m, None) => {
                                     sink.write_event(&InputEvent {
                                         time: TimeVal::try_from(SystemTime::now()).unwrap(),
                                         event_type: EventType::EV_KEY,

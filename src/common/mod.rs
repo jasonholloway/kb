@@ -1,9 +1,15 @@
-#[derive(Debug, Copy, Clone)]
-pub enum Update<TRaw> {
+use crate::machines::{RunRef};
+
+#[derive(Debug)]
+pub enum Ev<TRaw> {
     Key(u16, Movement, Option<TRaw>),
-    Tick,
     On(Mode),
     Off(Mode),
+    Tick,
+    Spawn(RunRef<Ev<TRaw>>),
+    Die,
+    MaskOn(u16),
+    MaskOff(u16)
 }
 
 #[derive(Debug, Copy, Clone)]

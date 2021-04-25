@@ -1,7 +1,7 @@
 use bitmaps::{Bitmap, Bits};
 use typenum::*;
 
-use crate::common::Update;
+use crate::common::{Ev,Ev::*};
 use crate::common::Movement;
 
 pub struct KeyMaps {
@@ -19,17 +19,16 @@ impl KeyMaps {
         }
     }
 
-    pub fn track_in<TRaw>(&mut self, up: &Update<TRaw>) {
+    pub fn track_in<TRaw>(&mut self, up: &Ev<TRaw>) {
         Self::gather_map(up, &mut self.pre);
     }
 
-    pub fn track_out<TRaw>(&mut self, up: &Update<TRaw>) {
+    pub fn track_out<TRaw>(&mut self, up: &Ev<TRaw>) {
         Self::gather_map(up, &mut self.post);
     }
 
-    fn gather_map<T, T2: Bits>(event: &Update<T>, map: &mut Bitmap<T2>) -> () {
+    fn gather_map<T, T2: Bits>(event: &Ev<T>, map: &mut Bitmap<T2>) -> () {
         use Movement::*;
-        use Update::*;
 
         if let Key(code, movement, _) = event {
             match movement {

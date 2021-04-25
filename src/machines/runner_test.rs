@@ -1,10 +1,8 @@
-use std::collections::VecDeque;
+use crate::machines::{Runnable, Ctx};
+use crate::common::{Ev,Ev::*,Movement::*};
 
-use crate::machines::{CanEmit, Runnable};
-
-use super::{Runner,Ev};
+use super::Runner;
 use super::super::RunRef;
-use Ev::*;
 
 #[test]
 fn percolates() {
@@ -14,11 +12,11 @@ fn percolates() {
             RunRef::new("3", TestMachine { count: 3 }),
         ]);
 
-    let mut sink = VecDeque::new();
+    let mut sink = Ctx::new();
 
-    runner.run(&mut sink, Ev(()));
+    runner.run(&mut sink, Tick);
 
-    assert_eq!(sink.len(), 2 * 3)
+    assert_eq!(sink.buff.len(), 2 * 3)
 }
 
 #[test]
@@ -29,25 +27,25 @@ fn accumulates_in_sink_buffer() {
             RunRef::new("3", TestMachine { count: 3 }),
         ]);
 
-    let mut sink = VecDeque::new();
+    let mut sink = Ctx::new();
 
-    runner.run(&mut sink, Ev(()));
-    runner.run(&mut sink, Ev(()));
+    runner.run(&mut sink, Tick);
+    runner.run(&mut sink, Tick);
 
-    assert_eq!(sink.len(), (2 * 3) + (2 * 3))
+    assert_eq!(sink.buff.len(), (2 * 3) + (2 * 3))
 }
 
 #[test]
 fn empty_set_opaque() {
-    let mut runner = Runner::<Ev<(),()>>::new(vec![]);
+    let mut runner = Runner::<Ev<()>>::new(vec![]);
 
-    let mut sink = VecDeque::new();
+    let mut sink = Ctx::new();
 
-    runner.run(&mut sink, Ev(()));
-    runner.run(&mut sink, Ev(()));
-    runner.run(&mut sink, Ev(()));
+    runner.run(&mut sink, Tick);
+    runner.run(&mut sink, Tick);
+    runner.run(&mut sink, Tick);
 
-    assert_eq!(sink.len(), 0)
+    assert_eq!(sink.buff.len(), 0)
 }
 
 #[test]
@@ -57,11 +55,11 @@ fn spawns_machines() {
             RunRef::new("alf", Redoubler { i: 0, depth: 2 }),
         ]);
 
-    let mut sink = VecDeque::new();
+    let mut sink = Ctx::new();
 
-    runner.run(&mut sink, Ev::Ev(3));
+    runner.run(&mut sink, Key(3, Down, None));
 
-    assert_eq!(sink.len(), 16)
+    assert_eq!(sink.buff.len(), 16)
 }
 
 #[test]
@@ -72,11 +70,11 @@ fn spawns_machines_2() {
             RunRef::new("maz", Redoubler { i: 20, depth: 1 }),
         ]);
 
-    let mut sink = VecDeque::new();
+    let mut sink = Ctx::new();
 
-    runner.run(&mut sink, Ev::Ev(10));
+    runner.run(&mut sink, Key(10, Down, None));
 
-    assert_eq!(sink.len(), 128)
+    assert_eq!(sink.buff.len(), 128)
 }
 
 #[test]
@@ -86,27 +84,26 @@ fn machines_die_too() {
             RunRef::new("Morris", Mayfly { life: 3 }),
         ]);
 
-    let mut sink = VecDeque::new();
+    let mut sink = Ctx::new();
 
-    runner.run(&mut sink, Ev::Ev(1));
-    runner.run(&mut sink, Ev::Ev(2));
-    runner.run(&mut sink, Ev::Ev(3));
-    runner.run(&mut sink, Ev::Ev(4));
-    runner.run(&mut sink, Ev::Ev(5));
+    runner.run(&mut sink, Key(1, Down, None));
+    runner.run(&mut sink, Key(2, Down, None));
+    runner.run(&mut sink, Key(3, Down, None));
+    runner.run(&mut sink, Key(4, Down, None));
+    runner.run(&mut sink, Key(5, Down, None));
 
-    dbg!(&sink);
+    dbg!(&sink.buff);
 
-    assert_eq!(sink.len(), 3)
+    assert_eq!(sink.buff.len(), 3)
 }
 
 struct Mayfly {
     life: u8,
 }
 
-impl<TCtx> Runnable<TCtx, Ev<(),u8>> for Mayfly
-    where TCtx: CanEmit<Ev<(),u8>>
+impl Runnable<Ev<()>> for Mayfly
 {
-    fn run(&mut self, x: &mut TCtx, ev: Ev<(),u8>) {
+    fn run(&mut self, x: &mut Ctx<Ev<()>>, ev: Ev<()>) {
         if self.life > 0 {
             println!("reemitting");
             x.emit(ev);
@@ -121,17 +118,16 @@ impl<TCtx> Runnable<TCtx, Ev<(),u8>> for Mayfly
 
 struct Redoubler {
     i: u8,
-    depth: u8
+    depth: u16
 }
 
-impl<TCtx> Runnable<TCtx,Ev<(),u8>> for Redoubler
-    where TCtx: CanEmit<Ev<(),u8>>
+impl Runnable<Ev<()>> for Redoubler
 {
-    fn run(&mut self, x: &mut TCtx, ev: Ev<(),u8>) {
+    fn run(&mut self, x: &mut Ctx<Ev<()>>, ev: Ev<()>) {
         println!("D{:?} I{:?} E{:?}", self.depth, self.i, &ev);
 
         x.emit(ev);
-        x.emit(Ev::Ev(self.depth));
+        x.emit(Key(self.depth, Down, None));
 
         if self.depth > 0 {
             x.emit(Ev::Spawn(RunRef {
@@ -148,14 +144,13 @@ struct TestMachine {
     count: u16,
 }
 
-impl<TCtx> Runnable<TCtx,Ev<(),()>> for TestMachine
-    where TCtx: CanEmit<Ev<(),()>>
+impl Runnable<Ev<()>> for TestMachine
 {
-    fn run(&mut self, x: &mut TCtx, ev: Ev<(),()>) {
+    fn run(&mut self, x: &mut Ctx<Ev<()>>, ev: Ev<()>) {
 
         for i in 0..self.count {
             dbg!(i);
-            x.emit(Ev(()))
+            x.emit(Tick)
         }
     }
 }

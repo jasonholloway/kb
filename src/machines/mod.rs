@@ -15,17 +15,20 @@ pub mod mode_machine;
 pub mod print_keys;
 
 
-use self::key_maps::KeyMaps;
 use std::collections::vec_deque::*;
 
+use crate::common::Ev;
 
-pub struct RunRef<TCtx, TEv> {
+use self::key_maps::KeyMaps;
+
+
+pub struct RunRef<TEv> {
     tag: &'static str,
-    inner: Box<dyn Runnable<TCtx, TEv>>
+    inner: Box<dyn Runnable<TEv>>
 }
 
-impl<TCtx, TEv> RunRef<TCtx,TEv> {
-    pub fn new<TInner: 'static + Runnable<TCtx, TEv>>(tag: &'static str, inner: TInner) -> RunRef<TCtx, TEv> {
+impl<TEv> RunRef<TEv> {
+    pub fn new<TInner: 'static + Runnable<TEv>>(tag: &'static str, inner: TInner) -> RunRef<TEv> {
         RunRef {
             tag,
             inner: Box::new(inner)
@@ -33,7 +36,7 @@ impl<TCtx, TEv> RunRef<TCtx,TEv> {
     }
 }
 
-impl<TCtx, TEv> std::fmt::Debug for RunRef<TCtx,TEv> {
+impl<TEv> std::fmt::Debug for RunRef<TEv> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.tag)
     }
@@ -41,27 +44,62 @@ impl<TCtx, TEv> std::fmt::Debug for RunRef<TCtx,TEv> {
 
 
 
+pub struct Ctx<TEv> {
+    pub maps: KeyMaps,
+    pub buff: VecDeque<TEv>
+}
 
-type Sink<TEv> = VecDeque<TEv>;
+impl<TRaw> Ctx<TRaw> {
+    pub fn new() -> Ctx<TRaw> {
+        Ctx {
+            maps: KeyMaps::new(),
+            buff: VecDeque::new()
+        }
+    }
+}
 
+impl<TRaw> Ctx<Ev<TRaw>> {
+    pub fn emit(&mut self, ev: Ev<TRaw>) {
+        self.buff.push_back(ev)
+    }
 
-pub trait Runnable<TCtx, TEv> {
-    fn run(&mut self, ctx: &mut TCtx, ev: TEv) -> ();
+    pub fn emit_many<T: IntoIterator<Item=Ev<TRaw>>>(&mut self, evs: T) {
+        self.buff.extend(evs)
+    }
+
+    pub fn mask(&mut self, codes: &[u16]) {
+        for c in codes {
+            self.emit(Ev::MaskOn(*c));
+        }
+    }
+
+    pub fn unmask(&mut self, codes: &[u16]) {
+        for c in codes {
+            self.emit(Ev::MaskOff(*c));
+        }
+    }
 }
 
 
 
-pub trait HasMaps {
-    fn maps(&self) -> &KeyMaps;
+
+pub trait Runnable<TEv> {
+    fn run(&mut self, x: &mut Ctx<TEv>, ev: TEv) -> ();
 }
 
-pub trait CanEmit<TEv> {
-    fn emit(&mut self, ev: TEv);
-    fn emit_many<T: IntoIterator<Item=TEv>>(&mut self, evs: T);
-}
 
-pub trait CanMask<TEv> {
-    fn mask(&mut self, codes: &[u16]);
-    fn unmask(&mut self, codes: &[u16]);
-}
+
+// pub trait HasMaps {
+//     fn maps(&self) -> &KeyMaps;
+// }
+
+// pub trait CanEmit<TEv> {
+//     fn emit(&mut self, ev: TEv);
+//     fn emit_many<T: IntoIterator<Item=TEv>>(&mut self, evs: T);
+// }
+
+// pub trait CanMask<TEv> {
+//     fn mask(&mut self, codes: &[u16]);
+//     fn unmask(&mut self, codes: &[u16]);
+// }
 
