@@ -7,8 +7,6 @@ use std::collections::VecDeque;
 use super::{RunRef, Runnable, Ctx};
 use crate::common::{Ev,Ev::*};
 
-
-//below TUp needs purging/replacing with TEv
 pub struct Runner<TEv>
 {
     pending: VecDeque<RunRef<TEv>>,
@@ -29,17 +27,6 @@ impl<TEv> Runner<TEv>
             context: Ctx::new()        }
     }
 }
-
-// impl<TEv> CanEmit<TEv> for RunCtx<TEv> {
-//     fn emit(&mut self, ev: TEv) {
-//         self.buff.push_back(ev)
-//     }
-
-//     fn emit_many<T: IntoIterator<Item=TEv>>(&mut self, evs: T) {
-//         self.buff.extend(evs)
-//     }
-// }
-
 
 impl<TRaw> Runnable<Ev<TRaw>> for Runner<Ev<TRaw>>
 {

@@ -1,6 +1,6 @@
 use crate::machines::{RunRef};
 
-#[derive(Debug)]
+#[derive(Debug,PartialEq)]
 pub enum Ev<TRaw> {
     Key(u16, Movement, Option<TRaw>),
     On(Mode),
@@ -12,13 +12,13 @@ pub enum Ev<TRaw> {
     MaskOff(u16)
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Movement {
     Up,
     Down,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Mode {
     Root,
     Mode(&'static str),

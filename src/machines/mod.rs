@@ -27,6 +27,12 @@ pub struct RunRef<TEv> {
     inner: Box<dyn Runnable<TEv>>
 }
 
+impl<TEv> PartialEq for RunRef<TEv> {
+    fn eq(&self, other: &Self) -> bool {
+        false
+    }
+}
+
 impl<TEv> RunRef<TEv> {
     pub fn new<TInner: 'static + Runnable<TEv>>(tag: &'static str, inner: TInner) -> RunRef<TEv> {
         RunRef {
@@ -41,7 +47,6 @@ impl<TEv> std::fmt::Debug for RunRef<TEv> {
         write!(f, "{}", self.tag)
     }
 }
-
 
 
 pub struct Ctx<TEv> {

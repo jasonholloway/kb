@@ -5,7 +5,7 @@ use Ev::*;
 use Movement::*;
 
 #[test]
-fn masking() {
+fn masking_obscures() {
     let mut runner = Runner::new(
         vec![
             RunRef::new("m1", Machine::new(Masker {}))
@@ -17,17 +17,47 @@ fn masking() {
 
     runner.run(&mut sink, Key(1, Down, None));
     runner.run(&mut sink, Key(2, Down, None));
+    assert!(&sink.buff.contains(&Key(2, Down, None)));
     assert_eq!(sink.buff.len(), 1);
 
     runner.run(&mut sink, Key(2, Up, None));
     runner.run(&mut sink, Key(1, Up, None));
+    assert!(&sink.buff.contains(&Key(2, Up, None)));
     assert_eq!(sink.buff.len(), 2);
+}
 
-    runner.run(&mut sink, Key(101, Up, None));
+#[test]
+fn unmasking_reemits() {
+    let mut runner = Runner::new(
+        vec![
+            RunRef::new("m1", Machine::new(Masker {}))
+        ]);
+
+    let mut sink = Ctx::new();
+
+
+    runner.run(&mut sink, Key(101, Down, None));
 
     runner.run(&mut sink, Key(1, Down, None));
-    runner.run(&mut sink, Key(2, Down, None));
-    assert_eq!(sink.buff.len(), 4);
+    assert_eq!(sink.buff.len(), 0,
+            "real key suppressed");
+
+    runner.run(&mut sink, Key(101, Up, None));
+    assert!(&sink.buff.contains(&Key(1, Down, None)),
+            "on unmask, key finally percolates");
+
+
+    runner.run(&mut sink, Key(101, Down, None));
+    assert!(&sink.buff.contains(&Key(1, Up, None)),
+            "on mask, key is released");
+
+    runner.run(&mut sink, Key(1, Up, None));
+    assert_eq!(sink.buff.len(), 2,
+            "real release suppressed");
+
+    runner.run(&mut sink, Key(101, Up, None));
+    assert_eq!(sink.buff.len(), 2,
+            "nothing to do as already apparently released");
 }
 
 

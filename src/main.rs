@@ -9,6 +9,10 @@ extern crate libc;
 
 #[cfg(test)]
 extern crate spectral;
+#[cfg(test)]
+extern crate totems;
+#[cfg(test)]
+extern crate itertools;
 
 
 use common::*;
