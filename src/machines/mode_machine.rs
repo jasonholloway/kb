@@ -1,4 +1,4 @@
-use super::{Runnable, Ctx};
+use super::{Ctx, RunRef, Runnable, machine::Machine};
 use crate::common::{Act::*, Mode, Mode::*};
 use crate::common::{Movement::*, Ev,Ev::*};
 use std::fmt::Debug;
@@ -18,7 +18,7 @@ impl ModeMachine {
 
 impl<TRaw> Runnable<Ev<TRaw>> for ModeMachine
 where
-    TRaw: Debug,
+    TRaw: 'static + Debug,
 {
     fn run<'a>(&mut self, x: &mut Ctx<Ev<TRaw>>, ev: Ev<TRaw>) {
 
@@ -35,7 +35,7 @@ where
             (Mode("MAltShift"), Key(42, Up, _)) => [Then(Mode("MAlt"))].iter(),
             (Mode("MAltShift"), Key(56, Up, _)) => [Then(Mode("MShift"))].iter(),
 
-            (Mode("MAltShift"), Key(37, Down, _)) => [Launch("AltShiftJ")].iter(),
+            (Mode("MAltShift"), Key(36, Down, _)) => [Launch("AltShiftJ")].iter(),
 
             _ => [].iter(),
         };
@@ -62,7 +62,10 @@ where
 
                 Mask(c) => {}
                 Map(from, to) => {}
-                Launch(name) => {}
+                Launch(name) => {
+                    //should be registered such that a changing mode will cause it to die...
+                    x.emit(Spawn(RunRef::new("", Machine::new(ModeMachine::new()))))
+                }
             }
         }
 

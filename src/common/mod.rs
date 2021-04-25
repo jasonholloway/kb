@@ -9,7 +9,12 @@ pub enum Ev<TRaw> {
     Spawn(RunRef<Ev<TRaw>>),
     Die,
     MaskOn(u16),
-    MaskOff(u16)
+    MaskOff(u16),
+}
+
+pub enum Emit<TRaw> {
+    Emit(Ev<TRaw>),
+    PassThru(Ev<TRaw>)
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]

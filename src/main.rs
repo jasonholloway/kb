@@ -9,14 +9,10 @@ extern crate libc;
 
 #[cfg(test)]
 extern crate spectral;
-#[cfg(test)]
-extern crate totems;
-#[cfg(test)]
-extern crate itertools;
 
 
 use common::*;
-use machines::{RunRef, lead_machine::LeadMachine, machine::Machine, mode_machine::ModeMachine, print_keys::PrintKeys, runner::Runner};
+use machines::{RunRef, big_machine::BigMachine, lead_machine::LeadMachine, machine::Machine, mode_machine::ModeMachine, print_keys::PrintKeys, runner::Runner};
 use std::fmt::Debug;
 
 #[cfg(windows)]
@@ -53,7 +49,7 @@ where
         RunRef::new("printBefore", Machine::new(PrintKeys::new(1, 31))),
         // RunRef::new("big", Machine::new(BigMachine::new())),
         RunRef::new("mode", Machine::new(ModeMachine::new())),
-        RunRef::new("lead", Machine::new(LeadMachine::new())),
+        // RunRef::new("lead", Machine::new(LeadMachine::new())),
         RunRef::new("printAfter", Machine::new(PrintKeys::new(4, 32))),
     ])
 }

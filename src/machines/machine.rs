@@ -8,6 +8,7 @@ pub struct Machine<TRaw,TBody> {
 
 impl<TRaw,TBody> Machine<TRaw,TBody>
 where
+    TRaw: std::fmt::Debug,
     TBody: Runnable<Ev<TRaw>>
 {
     pub fn new(body: TBody) -> Machine<TRaw,TBody> {
@@ -19,6 +20,8 @@ where
 
     fn run_handle(&mut self, x: &mut Ctx<Ev<TRaw>>, ev: Ev<TRaw>) {
         self.body.run(&mut self.context, ev);
+
+        //there's a bug here in that all passed-through evs will be handled  the same...
 
         while let Some(ev2) = self.context.buff.pop_front() {
             match &ev2 {
