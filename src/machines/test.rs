@@ -7,7 +7,7 @@ use Update::*;
 use Movement::*;
 
 #[test]
-fn stuff() {
+fn masking() {
     let mut runner = Runner::new(
         vec![
             RunRef::new("m1", Machine::new(Masker {}))
@@ -15,10 +15,21 @@ fn stuff() {
 
     let mut sink = VecDeque::new();
 
-    runner.run(&mut sink, Ev(Key(1, Down, None)));
-    runner.run(&mut sink, Ev(Key(1, Up, None)));
+    runner.run(&mut sink, Ev(Key(101, Down, None)));
 
-    assert_eq!(sink.len(), 2 * 3)
+    runner.run(&mut sink, Ev(Key(1, Down, None)));
+    runner.run(&mut sink, Ev(Key(2, Down, None)));
+    assert_eq!(sink.len(), 1);
+
+    runner.run(&mut sink, Ev(Key(2, Up, None)));
+    runner.run(&mut sink, Ev(Key(1, Up, None)));
+    assert_eq!(sink.len(), 2);
+
+    runner.run(&mut sink, Ev(Key(101, Up, None)));
+
+    runner.run(&mut sink, Ev(Key(1, Down, None)));
+    runner.run(&mut sink, Ev(Key(2, Down, None)));
+    assert_eq!(sink.len(), 4);
 }
 
 
@@ -30,11 +41,17 @@ impl<TCtx> Runnable<TCtx,Ev<TCtx,Update<()>>> for Masker
 {
     fn run(&mut self, x: &mut TCtx, ev: Ev<TCtx,Update<()>>) {
 
-        x.mask(&[1]);
-
-        x.emit(ev);
-
-        x.unmask(&[1]);
+        match ev {
+            Ev(Key(i, Down, _)) if i > 100 => {
+                x.mask(&[i-100]);
+            },
+            Ev(Key(i, Up, _)) if i > 100 => {
+                x.unmask(&[i-100]);
+            },
+            _ => {
+                x.emit(ev);
+            }
+        }
     }
 }
 
