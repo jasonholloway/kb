@@ -1,7 +1,7 @@
 use typenum::*;
 use bitmaps::Bitmap;
 
-use super::{CanEmit, HasMaps, Runnable, Sink, runner::{Ev,Ev::*}};
+use super::{CanEmit, HasMaps, Runnable, runner::{Ev,Ev::*}};
 use crate::{common::Update, Update::*};
 use std::fmt::Debug;
 
@@ -50,7 +50,7 @@ where
     TCtx: CanEmit<Ev<TCtx,Update<TRaw>>> + HasMaps,
     TRaw: Debug
 {
-    fn run(&mut self, x: &mut TCtx, ev: Ev<TCtx,Update<TRaw>>, sink: &mut Sink<Ev<TCtx,Update<TRaw>>>) {
+    fn run(&mut self, x: &mut TCtx, ev: Ev<TCtx,Update<TRaw>>) {
         let maps = x.maps();
         
         match ev {
@@ -59,7 +59,7 @@ where
                     self.print(&maps.pre, &up);
                 }
 
-                x.emit(Ev(up), sink);
+                x.emit(Ev(up));
             }
             _ => ()
         }

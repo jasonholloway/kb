@@ -46,7 +46,7 @@ type Sink<TEv> = VecDeque<TEv>;
 
 
 pub trait Runnable<TCtx, TEv> {
-    fn run(&mut self, ctx: &mut TCtx, ev: TEv, sink: &mut Sink<TEv>) -> ();
+    fn run(&mut self, ctx: &mut TCtx, ev: TEv) -> ();
 }
 
 
@@ -56,11 +56,12 @@ pub trait HasMaps {
 }
 
 pub trait CanEmit<TEv> {
-    fn emit(&mut self, ev: TEv, sink: &mut Sink<TEv>);
+    fn emit(&mut self, ev: TEv);
+    fn emit_many<T: IntoIterator<Item=TEv>>(&mut self, evs: T);
 }
 
 pub trait CanMask<TEv> {
-    fn mask(&mut self, codes: &[u16], sink: &mut Sink<TEv>);
-    fn unmask(&mut self, codes: &[u16], sink: &mut Sink<TEv>);
+    fn mask(&mut self, codes: &[u16]);
+    fn unmask(&mut self, codes: &[u16]);
 }
 

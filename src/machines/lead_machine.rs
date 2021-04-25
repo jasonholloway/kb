@@ -1,4 +1,4 @@
-use super::{CanEmit, Runnable, Sink, runner::{Ev,Ev::*}};
+use super::{CanEmit, Runnable, runner::{Ev,Ev::*}};
 use crate::common::{Act::*, Mode, Mode::*};
 use crate::common::{Movement::*, *};
 use std::fmt::Debug;
@@ -21,7 +21,7 @@ where
     TCtx: CanEmit<Ev<TCtx,Update<TRaw>>>,
     TRaw: Debug
 {
-    fn run<'a>(&mut self, x: &mut TCtx, ev: Ev<TCtx,Update<TRaw>>, sink: &'a mut Sink<Ev<TCtx,Update<TRaw>>>) -> () {
+    fn run<'a>(&mut self, x: &mut TCtx, ev: Ev<TCtx,Update<TRaw>>) -> () {
         match &ev {
             Ev(up) => {
                 use Update::*;
@@ -68,12 +68,12 @@ where
                         }
 
                         Emit(c, m) => {
-                            x.emit(Ev(Key(*c, *m, None)), sink);
+                            x.emit(Ev(Key(*c, *m, None)));
                         }
 
                         Then(new_mode) => {
-                            x.emit(Ev(Off(self.mode)), sink);
-                            x.emit(Ev(On(*new_mode)), sink);
+                            x.emit(Ev(Off(self.mode)));
+                            x.emit(Ev(On(*new_mode)));
                             self.mode = *new_mode;
 
                             println!("\t\t{:?}", *new_mode);
@@ -86,7 +86,7 @@ where
                 }
 
                 if reemit {
-                    x.emit(ev, sink);
+                    x.emit(ev);
                 }
             }
 

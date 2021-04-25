@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use crate::common::{Movement::*, Update, Update::*};
 use crate::Action::*;
-use super::{CanEmit, CanMask, Runnable, Sink, runner::{Ev,Ev::*}};
+use super::{CanEmit, CanMask, Runnable, runner::{Ev,Ev::*}};
 
 
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -34,7 +34,7 @@ where
     TRaw: Debug,
     TCtx: CanEmit<Ev<TCtx,Update<TRaw>>> + CanMask<Ev<TCtx,Update<TRaw>>>
 {
-    fn run<'a>(&mut self, x: &mut TCtx, ev: Ev<TCtx,Update<TRaw>>, sink: &'a mut Sink<Ev<TCtx,Update<TRaw>>>) -> () {
+    fn run<'a>(&mut self, x: &mut TCtx, ev: Ev<TCtx,Update<TRaw>>) -> () {
         use Mode::*;
 
         match ev {
@@ -75,37 +75,37 @@ where
                 let action = match (prev_mode, next_mode, &up) {
 
                     (_, AltShiftSpace, Key(57, Down, _)) => {
-                        x.mask(&[42, 56], sink);
-                        x.emit(Ev(Key(28, Down, None)), sink);
+                        x.mask(&[42, 56]);
+                        x.emit(Ev(Key(28, Down, None)));
                         Take
                     },
                     (AltShiftSpace, _, Key(57, Up, _)) => {
-                        x.emit(Ev(Key(28, Up, None)), sink);
-                        x.unmask(&[42, 56], sink);
+                        x.emit(Ev(Key(28, Up, None)));
+                        x.unmask(&[42, 56]);
                         Take
                     },
 
 
                     (_, AltShiftJ, Key(36, Down, _)) => {
-                        x.mask(&[42, 56], sink);
-                        x.emit(Ev(Key(108, Down, None)), sink);
+                        x.mask(&[42, 56]);
+                        x.emit(Ev(Key(108, Down, None)));
                         Take
                     },
                     (AltShiftJ, _, Key(36, Up, _)) => {
-                        x.emit(Ev(Key(108, Up, None)), sink);
-                        x.unmask(&[42, 56], sink);
+                        x.emit(Ev(Key(108, Up, None)));
+                        x.unmask(&[42, 56]);
                         Take
                     },
 
 
                     (_, AltShiftK, Key(37, Down, _)) => {
-                        x.mask(&[42, 56], sink); //should do this on entry/exit rather than each keypress
-                        x.emit(Ev(Key(103, Down, None)), sink);
+                        x.mask(&[42, 56]); //should do this on entry/exit rather than each keypress
+                        x.emit(Ev(Key(103, Down, None)));
                         Take
                     },
                     (AltShiftK, _, Key(37, Up, _)) => {
-                        x.emit(Ev(Key(103, Up, None)), sink);
-                        x.unmask(&[42, 56], sink);
+                        x.emit(Ev(Key(103, Up, None)));
+                        x.unmask(&[42, 56]);
                         Take
                     },
 
@@ -116,7 +116,7 @@ where
                     Skip => {
                         if let Key(_, _, raw) = &up {
                             match raw {
-                                Some(_) => x.emit(Ev(up), sink),
+                                Some(_) => x.emit(Ev(up)),
                                 None => {}
                             }
                         }

@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::machines::{Runnable, Sink};
+use crate::machines::{CanEmit, Runnable};
 
 use super::{Runner,Ev};
 use super::super::RunRef;
@@ -16,7 +16,7 @@ fn percolates() {
 
     let mut sink = VecDeque::new();
 
-    runner.run(&mut (), Ev(()), &mut sink);
+    runner.run(&mut sink, Ev(()));
 
     assert_eq!(sink.len(), 2 * 3)
 }
@@ -31,8 +31,8 @@ fn accumulates_in_sink_buffer() {
 
     let mut sink = VecDeque::new();
 
-    runner.run(&mut (), Ev(()), &mut sink);
-    runner.run(&mut (), Ev(()), &mut sink);
+    runner.run(&mut sink, Ev(()));
+    runner.run(&mut sink, Ev(()));
 
     assert_eq!(sink.len(), (2 * 3) + (2 * 3))
 }
@@ -43,9 +43,9 @@ fn empty_set_opaque() {
 
     let mut sink = VecDeque::new();
 
-    runner.run(&mut (), Ev(()), &mut sink);
-    runner.run(&mut (), Ev(()), &mut sink);
-    runner.run(&mut (), Ev(()), &mut sink);
+    runner.run(&mut sink, Ev(()));
+    runner.run(&mut sink, Ev(()));
+    runner.run(&mut sink, Ev(()));
 
     assert_eq!(sink.len(), 0)
 }
@@ -59,7 +59,7 @@ fn spawns_machines() {
 
     let mut sink = VecDeque::new();
 
-    runner.run(&mut (), Ev::Ev(3), &mut sink);
+    runner.run(&mut sink, Ev::Ev(3));
 
     assert_eq!(sink.len(), 16)
 }
@@ -74,7 +74,7 @@ fn spawns_machines_2() {
 
     let mut sink = VecDeque::new();
 
-    runner.run(&mut (), Ev::Ev(10), &mut sink);
+    runner.run(&mut sink, Ev::Ev(10));
 
     assert_eq!(sink.len(), 128)
 }
@@ -88,11 +88,11 @@ fn machines_die_too() {
 
     let mut sink = VecDeque::new();
 
-    runner.run(&mut (), Ev::Ev(1), &mut sink);
-    runner.run(&mut (), Ev::Ev(2), &mut sink);
-    runner.run(&mut (), Ev::Ev(3), &mut sink);
-    runner.run(&mut (), Ev::Ev(4), &mut sink);
-    runner.run(&mut (), Ev::Ev(5), &mut sink);
+    runner.run(&mut sink, Ev::Ev(1));
+    runner.run(&mut sink, Ev::Ev(2));
+    runner.run(&mut sink, Ev::Ev(3));
+    runner.run(&mut sink, Ev::Ev(4));
+    runner.run(&mut sink, Ev::Ev(5));
 
     dbg!(&sink);
 
@@ -103,15 +103,17 @@ struct Mayfly {
     life: u8,
 }
 
-impl Runnable<(), Ev<(),u8>> for Mayfly {
-    fn run(&mut self, x: &mut (), ev: Ev<(),u8>, sink: &mut Sink<Ev<(),u8>>) {
+impl<TCtx> Runnable<TCtx, Ev<(),u8>> for Mayfly
+    where TCtx: CanEmit<Ev<(),u8>>
+{
+    fn run(&mut self, x: &mut TCtx, ev: Ev<(),u8>) {
         if self.life > 0 {
             println!("reemitting");
-            sink.push_back(ev);
+            x.emit(ev);
             self.life -= 1;
         }
         else{
-            sink.push_back(Ev::Die {});
+            x.emit(Ev::Die {});
         }
     }
 }
@@ -122,15 +124,20 @@ struct Redoubler {
     depth: u8
 }
 
-impl Runnable<(),Ev<(),u8>> for Redoubler {
-    fn run(&mut self, x: &mut (), ev: Ev<(),u8>, sink: &mut Sink<Ev<(),u8>>) {
+impl<TCtx> Runnable<TCtx,Ev<(),u8>> for Redoubler
+    where TCtx: CanEmit<Ev<(),u8>>
+{
+    fn run(&mut self, x: &mut TCtx, ev: Ev<(),u8>) {
         println!("D{:?} I{:?} E{:?}", self.depth, self.i, &ev);
 
-        sink.push_back(ev);
-        sink.push_back(Ev::Ev(self.depth));
+        x.emit(ev);
+        x.emit(Ev::Ev(self.depth));
 
         if self.depth > 0 {
-          sink.push_back(Ev::Spawn(RunRef { tag: "baz", inner: Box::new(Redoubler { i: self.i + 1, depth: self.depth - 1 }) }))
+            x.emit(Ev::Spawn(RunRef {
+                tag: "baz",
+                inner: Box::new(Redoubler { i: self.i + 1, depth: self.depth - 1 })
+            }))
         }
     }
 }
@@ -141,12 +148,14 @@ struct TestMachine {
     count: u16,
 }
 
-impl Runnable<(),Ev<(),()>> for TestMachine {
-    fn run(&mut self, x: &mut (), ev: Ev<(),()>, sink: &mut Sink<Ev<(),()>>) {
+impl<TCtx> Runnable<TCtx,Ev<(),()>> for TestMachine
+    where TCtx: CanEmit<Ev<(),()>>
+{
+    fn run(&mut self, x: &mut TCtx, ev: Ev<(),()>) {
 
         for i in 0..self.count {
             dbg!(i);
-            sink.push_back(Ev(()));
+            x.emit(Ev(()))
         }
     }
 }

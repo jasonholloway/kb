@@ -1,8 +1,6 @@
 use std::collections::VecDeque;
-
 use crate::common::{Update,Movement};
-
-use super::{CanEmit, CanMask, Runnable, Sink, machine::Machine, runner::Runner};
+use super::{CanEmit, CanMask, Runnable, machine::Machine, runner::Runner};
 use super::super::{RunRef,Ev};
 use Ev::*;
 use Update::*;
@@ -17,8 +15,8 @@ fn stuff() {
 
     let mut sink = VecDeque::new();
 
-    runner.run(&mut (), Ev(Key(1, Down, None)), &mut sink);
-    runner.run(&mut (), Ev(Key(1, Up, None)), &mut sink);
+    runner.run(&mut sink, Ev(Key(1, Down, None)));
+    runner.run(&mut sink, Ev(Key(1, Up, None)));
 
     assert_eq!(sink.len(), 2 * 3)
 }
@@ -30,13 +28,23 @@ struct Masker {
 impl<TCtx> Runnable<TCtx,Ev<TCtx,Update<()>>> for Masker
     where TCtx: CanEmit<Ev<TCtx,Update<()>>> + CanMask<Ev<TCtx,Update<()>>>
 {
-    fn run(&mut self, x: &mut TCtx, ev: Ev<TCtx,Update<()>>, sink: &mut Sink<Ev<TCtx,Update<()>>>) {
+    fn run(&mut self, x: &mut TCtx, ev: Ev<TCtx,Update<()>>) {
 
-        x.mask(&[1], sink);
+        x.mask(&[1]);
 
-        x.emit(ev, sink);
+        x.emit(ev);
 
-        x.unmask(&[1], sink);
+        x.unmask(&[1]);
     }
 }
 
+
+impl<TEv> CanEmit<TEv> for VecDeque<TEv> {
+    fn emit(&mut self, ev: TEv) {
+        self.push_back(ev)
+    }
+
+    fn emit_many<T: IntoIterator<Item=TEv>>(&mut self, evs: T) {
+        self.extend(evs)
+    }
+}
