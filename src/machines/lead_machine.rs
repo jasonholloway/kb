@@ -15,11 +15,11 @@ impl LeadMachine {
 }
 
 
-impl<TRaw> Runnable<Ev<TRaw>> for LeadMachine
+impl<TRaw> Runnable<TRaw> for LeadMachine
 where
     TRaw: Debug
 {
-    fn run<'a>(&mut self, x: &mut Ctx<Ev<TRaw>>, ev: Ev<TRaw>) -> () {
+    fn run<'a>(&mut self, x: &mut Ctx<TRaw>, ev: Ev<TRaw>) -> () {
 
         let next = match (self.mode, &ev) {
             (Root, On(Mode("MAltShift"))) => [Then(Mode("AltShift"))].iter(),

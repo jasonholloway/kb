@@ -16,11 +16,11 @@ impl ModeMachine {
 }
 
 
-impl<TRaw> Runnable<Ev<TRaw>> for ModeMachine
+impl<TRaw> Runnable<TRaw> for ModeMachine
 where
     TRaw: 'static + Debug,
 {
-    fn run<'a>(&mut self, x: &mut Ctx<Ev<TRaw>>, ev: Ev<TRaw>) {
+    fn run<'a>(&mut self, x: &mut Ctx<TRaw>, ev: Ev<TRaw>) {
 
         let next = match (self.mode, &ev) {
             (Root, Key(42, Down, _)) => [Then(Mode("MShift"))].iter(),

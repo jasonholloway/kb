@@ -7,30 +7,31 @@ use std::collections::VecDeque;
 use super::{RunRef, Runnable, Ctx};
 use crate::common::{Ev,Ev::*};
 
-pub struct Runner<TEv>
+pub struct Runner<TRaw>
 {
-    pending: VecDeque<RunRef<TEv>>,
-    seen: VecDeque<RunRef<TEv>>,
-    buff1: VecDeque<TEv>,
-    buff2: VecDeque<TEv>,
-    context: Ctx<TEv>
+    pending: VecDeque<RunRef<TRaw>>,
+    seen: VecDeque<RunRef<TRaw>>,
+    buff1: VecDeque<Ev<TRaw>>,
+    buff2: VecDeque<Ev<TRaw>>,
+    context: Ctx<TRaw>
 }
 
-impl<TEv> Runner<TEv>
+impl<TRaw> Runner<TRaw>
 {
-    pub fn new(active: Vec<RunRef<TEv>>) -> Runner<TEv> {
+    pub fn new(active: Vec<RunRef<TRaw>>) -> Runner<TRaw> {
         Runner {
             pending: VecDeque::from(active),
             seen: VecDeque::new(),
             buff1: VecDeque::new(),
             buff2: VecDeque::new(),
-            context: Ctx::new()        }
+            context: Ctx::new()
+        }
     }
 }
 
-impl<TRaw> Runnable<Ev<TRaw>> for Runner<Ev<TRaw>>
+impl<TRaw> Runnable<TRaw> for Runner<TRaw>
 {
-    fn run(&mut self, x: &mut Ctx<Ev<TRaw>>, ev: Ev<TRaw>) {
+    fn run(&mut self, x: &mut Ctx<TRaw>, ev: Ev<TRaw>) {
         let mut buff1 = &mut self.buff1;
         let mut buff2 = &mut self.buff2;
         let mut pending = &mut self.pending;
@@ -49,7 +50,8 @@ impl<TRaw> Runnable<Ev<TRaw>> for Runner<Ev<TRaw>>
             for e1 in buff1.drain(0..) {
                 m.inner.run(&mut self.context, e1);
 
-                for e2 in self.context.buff.drain(0..) {
+                for emit in self.context.buff.drain(0..) {
+                    let e2 = emit.ev();
                     match e2 {
                         Spawn(m2) => {
                             pending.push_front(m2);

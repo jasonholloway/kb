@@ -41,7 +41,7 @@ pub fn main() {
     }
 }
 
-fn create_runner<'a, TRaw>() -> Runner<Ev<TRaw>>
+fn create_runner<'a, TRaw>() -> Runner<TRaw>
 where
     TRaw: 'static + Debug,
 {

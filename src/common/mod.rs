@@ -6,7 +6,7 @@ pub enum Ev<TRaw> {
     On(Mode),
     Off(Mode),
     Tick,
-    Spawn(RunRef<Ev<TRaw>>),
+    Spawn(RunRef<TRaw>),
     Die,
     MaskOn(u16),
     MaskOff(u16),
@@ -46,3 +46,12 @@ pub type NextDue = u64;
 // pub enum Act {
 //     Mode(&'static str),
 // }
+
+impl<TRaw> Emit<TRaw> {
+    pub fn ev(self) -> Ev<TRaw> {
+        match self {
+            Emit::Emit(ev) => ev,
+            Emit::PassThru(ev) => ev
+        }
+    }
+}

@@ -2,14 +2,14 @@ use crate::common::{Ev,Ev::*,Movement::*};
 use super::{Runnable, Ctx};
 
 pub struct Machine<TRaw,TBody> {
-    pub context: Ctx<Ev<TRaw>>,
+    pub context: Ctx<TRaw>,
     pub body: TBody
 }
 
 impl<TRaw,TBody> Machine<TRaw,TBody>
 where
     TRaw: std::fmt::Debug,
-    TBody: Runnable<Ev<TRaw>>
+    TBody: Runnable<TRaw>
 {
     pub fn new(body: TBody) -> Machine<TRaw,TBody> {
         Machine {
@@ -18,12 +18,14 @@ where
         }
     }
 
-    fn run_handle(&mut self, x: &mut Ctx<Ev<TRaw>>, ev: Ev<TRaw>) {
+    fn run_handle(&mut self, x: &mut Ctx<TRaw>, ev: Ev<TRaw>) {
         self.body.run(&mut self.context, ev);
 
         //there's a bug here in that all passed-through evs will be handled  the same...
 
-        while let Some(ev2) = self.context.buff.pop_front() {
+        while let Some(emit) = self.context.buff.pop_front() {
+            let ev2 = emit.ev();
+
             match &ev2 {
                 MaskOn(c) => {
                     let is_maskable = !self.context.maps.mask.set(*c as usize, true);
@@ -57,11 +59,11 @@ where
     }
 }
 
-impl<TRaw: std::fmt::Debug, TBody> Runnable<Ev<TRaw>> for Machine<TRaw,TBody>
+impl<TRaw: std::fmt::Debug, TBody> Runnable<TRaw> for Machine<TRaw,TBody>
 where
-    TBody: Runnable<Ev<TRaw>>
+    TBody: Runnable<TRaw>
 {
-    fn run(&mut self, x: &mut Ctx<Ev<TRaw>>, ev: Ev<TRaw>) -> () {
+    fn run(&mut self, x: &mut Ctx<TRaw>, ev: Ev<TRaw>) -> () {
 
         self.context.maps.track_in(&ev);
 

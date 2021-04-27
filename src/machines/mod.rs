@@ -17,24 +17,24 @@ pub mod print_keys;
 
 use std::collections::vec_deque::*;
 
-use crate::common::Ev;
+use crate::common::{Emit, Ev};
 
 use self::key_maps::KeyMaps;
 
 
-pub struct RunRef<TEv> {
+pub struct RunRef<TRaw> {
     tag: &'static str,
-    inner: Box<dyn Runnable<TEv>>
+    inner: Box<dyn Runnable<TRaw>>
 }
 
-impl<TEv> PartialEq for RunRef<TEv> {
+impl<TRaw> PartialEq for RunRef<TRaw> {
     fn eq(&self, other: &Self) -> bool {
         false
     }
 }
 
-impl<TEv> RunRef<TEv> {
-    pub fn new<TInner: 'static + Runnable<TEv>>(tag: &'static str, inner: TInner) -> RunRef<TEv> {
+impl<TRaw> RunRef<TRaw> {
+    pub fn new<TInner: 'static + Runnable<TRaw>>(tag: &'static str, inner: TInner) -> RunRef<TRaw> {
         RunRef {
             tag,
             inner: Box::new(inner)
@@ -42,16 +42,16 @@ impl<TEv> RunRef<TEv> {
     }
 }
 
-impl<TEv> std::fmt::Debug for RunRef<TEv> {
+impl<TRaw> std::fmt::Debug for RunRef<TRaw> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.tag)
     }
 }
 
 
-pub struct Ctx<TEv> {
+pub struct Ctx<TRaw> {
     pub maps: KeyMaps,
-    pub buff: VecDeque<TEv>
+    pub buff: VecDeque<Emit<TRaw>>
 }
 
 impl<TRaw> Ctx<TRaw> {
@@ -63,13 +63,19 @@ impl<TRaw> Ctx<TRaw> {
     }
 }
 
-impl<TRaw> Ctx<Ev<TRaw>> {
+impl<TRaw> Ctx<TRaw> {
     pub fn emit(&mut self, ev: Ev<TRaw>) {
-        self.buff.push_back(ev)
+        self.buff.push_back(Emit::Emit(ev))
     }
 
     pub fn emit_many<T: IntoIterator<Item=Ev<TRaw>>>(&mut self, evs: T) {
-        self.buff.extend(evs)
+        for ev in evs {
+            self.emit(ev)
+        }
+    }
+
+    pub fn pass_thru(&mut self, ev: Ev<TRaw>) {
+        self.buff.push_back(Emit::PassThru(ev))
     }
 
     pub fn mask(&mut self, codes: &[u16]) {
@@ -88,8 +94,8 @@ impl<TRaw> Ctx<Ev<TRaw>> {
 
 
 
-pub trait Runnable<TEv> {
-    fn run(&mut self, x: &mut Ctx<TEv>, ev: TEv) -> ();
+pub trait Runnable<TRaw> {
+    fn run(&mut self, x: &mut Ctx<TRaw>, ev: Ev<TRaw>) -> ();
 }
 
 

@@ -28,12 +28,12 @@ impl BigMachine {
     }
 }
 
-impl<TRaw> Runnable<Ev<TRaw>>
+impl<TRaw> Runnable<TRaw>
     for BigMachine
 where
     TRaw: Debug,
 {
-    fn run<'a>(&mut self, x: &mut Ctx<Ev<TRaw>>, ev: Ev<TRaw>) -> () {
+    fn run<'a>(&mut self, x: &mut Ctx<TRaw>, ev: Ev<TRaw>) -> () {
         use Mode::*;
 
         let prev_mode = self.mode;

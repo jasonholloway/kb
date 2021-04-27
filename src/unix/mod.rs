@@ -6,8 +6,7 @@ mod glob;
 mod test;
 
 use crate::{Movement::*, machines::{Runnable, Ctx}};
-use crate::common::Ev;
-use Ev::*;
+use crate::common::Ev::*;
 use evdev_rs::enums::*;
 use evdev_rs::*;
 use std::convert::TryFrom;
@@ -28,7 +27,7 @@ enum Mode {
 
 pub fn run<'a, TRun>(dev_pattern: &str, runnable: &mut TRun) -> Result<(), Error>
 where
-    TRun: Runnable<Ev<InputEvent>>
+    TRun: Runnable<InputEvent>
 {
 
     let dev_path = find_file(dev_pattern).unwrap();
@@ -71,8 +70,8 @@ where
                                 runnable.run(&mut x, update);
 
                                 if !x.buff.is_empty() {
-                                    for e in x.buff.drain(0..) {
-                                        match e {
+                                    for emit in x.buff.drain(0..) {
+                                        match emit.ev() {
                                             Key(_, _, Some(raw)) => {
                                                 sink.write_event(&raw).unwrap();
                                             }
@@ -136,8 +135,8 @@ where
                     runnable.run(&mut x, Tick);
 
                    if !x.buff.is_empty() {
-                        for e in x.buff.drain(0..) {
-                            match e {
+                        for emit in x.buff.drain(0..) {
+                            match emit.ev() {
                                 Key(_, _, Some(raw)) => {
                                     sink.write_event(&raw).unwrap();
                                 }

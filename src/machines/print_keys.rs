@@ -45,11 +45,11 @@ impl PrintKeys {
     }
 }
 
-impl<TRaw> Runnable<Ev<TRaw>> for PrintKeys
+impl<TRaw> Runnable<TRaw> for PrintKeys
 where
     TRaw: Debug
 {
-    fn run(&mut self, x: &mut Ctx<Ev<TRaw>>, ev: Ev<TRaw>) {
+    fn run(&mut self, x: &mut Ctx<TRaw>, ev: Ev<TRaw>) {
         let maps = &x.maps;
         
         if let Key(_, _, _) = ev {
