@@ -5,16 +5,17 @@ pub enum Ev<TRaw> {
     Key(u16, Movement, Option<TRaw>),
     On(Mode),
     Off(Mode),
-    Tick,
-    Spawn(RunRef<TRaw>),
-    Die,
-    MaskOn(u16),
-    MaskOff(u16),
+    Tick
 }
 
 pub enum Emit<TRaw> {
     Emit(Ev<TRaw>),
-    PassThru(Ev<TRaw>)
+    Now(Mode),
+    Die,
+    MaskOn(u16),
+    MaskOff(u16),
+    PassThru(Ev<TRaw>),
+    Spawn(RunRef<TRaw>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -47,11 +48,11 @@ pub type NextDue = u64;
 //     Mode(&'static str),
 // }
 
-impl<TRaw> Emit<TRaw> {
-    pub fn ev(self) -> Ev<TRaw> {
-        match self {
-            Emit::Emit(ev) => ev,
-            Emit::PassThru(ev) => ev
-        }
-    }
-}
+// impl<TRaw> Emit<TRaw> {
+//     pub fn ev(self) -> Ev<TRaw> {
+//         match self {
+//             Emit::Emit(ev) => ev,
+//             Emit::PassThru(ev) => ev
+//         }
+//     }
+// }

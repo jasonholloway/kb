@@ -1,9 +1,10 @@
-use crate::common::{Ev,Ev::*,Movement::*};
+use crate::common::{Ev, Ev::*, Mode, Movement::*};
 use super::{Runnable, Ctx};
 
 pub struct Machine<TRaw,TBody> {
     pub context: Ctx<TRaw>,
-    pub body: TBody
+    pub body: TBody,
+    pub mode: Mode
 }
 
 impl<TRaw,TBody> Machine<TRaw,TBody>
@@ -14,19 +15,19 @@ where
     pub fn new(body: TBody) -> Machine<TRaw,TBody> {
         Machine {
             context: Ctx::new(),
-            body
+            body,
+            mode: Mode::Root
         }
     }
 
     fn run_handle(&mut self, x: &mut Ctx<TRaw>, ev: Ev<TRaw>) {
         self.body.run(&mut self.context, ev);
 
-        //there's a bug here in that all passed-through evs will be handled  the same...
+        //there's a bug here in that all passed-through evs will be handled the same as freshly-minted ones
+        use crate::common::Emit::*;
 
         while let Some(emit) = self.context.buff.pop_front() {
-            let ev2 = emit.ev();
-
-            match &ev2 {
+            match &emit {
                 MaskOn(c) => {
                     let is_maskable = !self.context.maps.mask.set(*c as usize, true);
 
@@ -49,10 +50,18 @@ where
                         }
                     }
                 },
-                _ => {
+
+                Emit(ev2) => {
                     self.context.maps.track_out(&ev2);
-                    x.emit(ev2);
-                }
+                    x.emit(*ev2);
+                },
+
+                PassThru(ev2) => {
+                    self.context.maps.track_out(&ev2);
+                    x.emit(*ev2);
+                } ,
+                Now(_) => {},
+                Die => {} //to pass back out to runner?
             }
         }
 

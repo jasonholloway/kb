@@ -6,7 +6,7 @@ mod glob;
 mod test;
 
 use crate::{Movement::*, machines::{Runnable, Ctx}};
-use crate::common::Ev::*;
+use crate::common::{Ev::*};
 use evdev_rs::enums::*;
 use evdev_rs::*;
 use std::convert::TryFrom;
@@ -41,17 +41,18 @@ where
     timer::catch_alrm().unwrap();
     let _timer = timer::set_itimer(Duration::from_millis(40)).unwrap();
 
-
     
     // let mut buff = VecDeque::new();
     let mut x = Ctx::new();
     let mut mode: Mode = Mode::Read;
 
+    use crate::common::Emit::*;
+
     loop {
         let res = match mode {
             Mode::Read => source
                 .next_event(ReadFlag::NORMAL | ReadFlag::BLOCKING)
-                .and_then(|(status, ev)| {
+                .and_then(|(status, ev)| -> Result<Mode, Error> {
                     //event_info(&ev);
                     match status {
                         ReadStatus::Success => match ev.event_code {
@@ -71,12 +72,12 @@ where
 
                                 if !x.buff.is_empty() {
                                     for emit in x.buff.drain(0..) {
-                                        match emit.ev() {
-                                            Key(_, _, Some(raw)) => {
+                                        match emit {
+                                            Emit(Key(_, _, Some(raw))) => {
                                                 sink.write_event(&raw).unwrap();
-                                            }
+                                            },
 
-                                            Key(c, m, None) => {
+                                            Emit(Key(c, m, None)) => {
                                                 sink.write_event(&InputEvent {
                                                     time: TimeVal::try_from(SystemTime::now())
                                                         .unwrap(),
@@ -136,12 +137,12 @@ where
 
                    if !x.buff.is_empty() {
                         for emit in x.buff.drain(0..) {
-                            match emit.ev() {
-                                Key(_, _, Some(raw)) => {
+                            match emit {
+                                Emit(Key(_, _, Some(raw))) => {
                                     sink.write_event(&raw).unwrap();
                                 }
 
-                                Key(c, m, None) => {
+                                Emit(Key(c, m, None)) => {
                                     sink.write_event(&InputEvent {
                                         time: TimeVal::try_from(SystemTime::now()).unwrap(),
                                         event_type: EventType::EV_KEY,

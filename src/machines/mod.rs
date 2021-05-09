@@ -80,14 +80,18 @@ impl<TRaw> Ctx<TRaw> {
 
     pub fn mask(&mut self, codes: &[u16]) {
         for c in codes {
-            self.emit(Ev::MaskOn(*c));
+            self.buff.push_back(Emit::MaskOn(*c))
         }
     }
 
     pub fn unmask(&mut self, codes: &[u16]) {
         for c in codes {
-            self.emit(Ev::MaskOff(*c));
+            self.buff.push_back(Emit::MaskOff(*c))
         }
+    }
+
+    pub fn spawn(&mut self, runRef: RunRef<TRaw>) {
+        self.buff.push_back(Emit::Spawn(runRef))
     }
 }
 

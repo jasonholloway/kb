@@ -5,7 +5,7 @@ mod runner_test;
 use std::collections::VecDeque;
 
 use super::{RunRef, Runnable, Ctx};
-use crate::common::{Ev,Ev::*};
+use crate::common::{Emit, Emit::*, Ev, Ev::*};
 
 pub struct Runner<TRaw>
 {
@@ -51,17 +51,18 @@ impl<TRaw> Runnable<TRaw> for Runner<TRaw>
                 m.inner.run(&mut self.context, e1);
 
                 for emit in self.context.buff.drain(0..) {
-                    let e2 = emit.ev();
+                    let e2 = emit;
                     match e2 {
+                        Emit(ev) => {
+                            buff2.push_back(ev);
+                        },
                         Spawn(m2) => {
                             pending.push_front(m2);
                         },
                         Die => {
                             requeue = false;
                         },
-                        _ => {
-                            buff2.push_back(e2);
-                        }
+                        _ => {}
                     }
                 }
             }

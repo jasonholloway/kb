@@ -64,7 +64,7 @@ where
                 Map(from, to) => {}
                 Launch(name) => {
                     //should be registered such that a changing mode will cause it to die...
-                    x.emit(Spawn(RunRef::new("", Machine::new(ModeMachine::new()))))
+                    x.spawn(RunRef::new("", Machine::new(ModeMachine::new())))
                 }
             }
         }
