@@ -1,7 +1,7 @@
 use std::fmt::Debug;
-use crate::common::{Movement::*, Ev, Ev::*};
+use crate::common::{MachineEv, Ev, Ev::*, Movement::*};
 use crate::Action::*;
-use super::{Runnable, Ctx};
+use super::{Ctx, Runnable, Sink};
 
 
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -28,12 +28,10 @@ impl BigMachine {
     }
 }
 
-impl<TRaw> Runnable<TRaw>
-    for BigMachine
-where
-    TRaw: Debug,
+impl<TRaw> Runnable<TRaw,Ev,MachineEv> for BigMachine
 {
-    fn run<'a>(&mut self, x: &mut Ctx<TRaw>, ev: Ev<TRaw>) -> () {
+    fn run<'a>(&mut self, x: &mut Ctx<TRaw,MachineEv>, ev: (Option<TRaw>,Ev)) -> ()
+    {
         use Mode::*;
 
         let prev_mode = self.mode;

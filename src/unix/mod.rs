@@ -6,7 +6,7 @@ mod glob;
 mod test;
 
 use crate::{Movement::*, machines::{Runnable, Ctx}};
-use crate::common::{Ev::*};
+use crate::common::{Ev::*,Ev,MachineEv};
 use evdev_rs::enums::*;
 use evdev_rs::*;
 use std::convert::TryFrom;
@@ -27,7 +27,7 @@ enum Mode {
 
 pub fn run<'a, TRun>(dev_pattern: &str, runnable: &mut TRun) -> Result<(), Error>
 where
-    TRun: Runnable<InputEvent>
+    TRun: Runnable<InputEvent,Ev,MachineEv>
 {
 
     let dev_path = find_file(dev_pattern).unwrap();
@@ -46,7 +46,7 @@ where
     let mut x = Ctx::new();
     let mut mode: Mode = Mode::Read;
 
-    use crate::common::Emit::*;
+    use crate::common::MachineEv::*;
 
     loop {
         let res = match mode {
@@ -60,24 +60,24 @@ where
                                 let code = ev.as_raw().code;
 
                                 let update = match ev.value {
-                                    0 => Key(code, Up, Some(ev)),
-                                    1 => Key(code, Down, Some(ev)),
-                                    2 => Key(code, Down, Some(ev)),
+                                    0 => Key(code, Up),
+                                    1 => Key(code, Down),
+                                    2 => Key(code, Down),
                                     _ => {
                                         return Err(Error::new(InvalidData, "strange event value"))
                                     }
                                 };
 
-                                runnable.run(&mut x, update);
+                                runnable.run(&mut x, (Some(ev), update));
 
                                 if !x.buff.is_empty() {
-                                    for emit in x.buff.drain(0..) {
-                                        match emit {
-                                            Emit(Key(_, _, Some(raw))) => {
-                                                sink.write_event(&raw).unwrap();
+                                    for (raw,emit) in x.buff.drain(0..) {
+                                        match (raw,emit) {
+                                            (Some(r), Ev(Key(_, _))) => {
+                                                sink.write_event(&r).unwrap();
                                             },
 
-                                            Emit(Key(c, m, None)) => {
+                                            (None, Ev(Key(c, m))) => {
                                                 sink.write_event(&InputEvent {
                                                     time: TimeVal::try_from(SystemTime::now())
                                                         .unwrap(),
@@ -133,16 +133,16 @@ where
         match res {
             Result::Err(err) => match err.raw_os_error() {
                 Some(libc::EINTR) => {
-                    runnable.run(&mut x, Tick);
+                    runnable.run(&mut x, (None, Tick));
 
                    if !x.buff.is_empty() {
-                        for emit in x.buff.drain(0..) {
-                            match emit {
-                                Emit(Key(_, _, Some(raw))) => {
-                                    sink.write_event(&raw).unwrap();
+                        for (raw,emit) in x.buff.drain(0..) {
+                            match (raw,emit) {
+                                (Some(r), Ev(Key(_, _))) => {
+                                    sink.write_event(&r).unwrap();
                                 }
 
-                                Emit(Key(c, m, None)) => {
+                                (None, Ev(Key(c, m))) => {
                                     sink.write_event(&InputEvent {
                                         time: TimeVal::try_from(SystemTime::now()).unwrap(),
                                         event_type: EventType::EV_KEY,

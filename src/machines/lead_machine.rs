@@ -1,6 +1,5 @@
-use std::fmt::Debug;
-use super::{Runnable, Ctx};
-use crate::common::{Act::*, Mode, Mode::*,Ev,Ev::*,Movement::*};
+use super::{Ctx, Runnable, Sink};
+use crate::common::{MachineEv,Act::*, Mode, Mode::*,Ev,Ev::*,Movement::*};
 
 pub struct LeadMachine {
     mode: Mode,
@@ -14,42 +13,40 @@ impl LeadMachine {
     }
 }
 
-
-impl<TRaw> Runnable<TRaw> for LeadMachine
-where
-    TRaw: Debug
+impl<TRaw> Runnable<TRaw,Ev,MachineEv> for LeadMachine
 {
-    fn run<'a>(&mut self, x: &mut Ctx<TRaw>, ev: Ev<TRaw>) -> () {
+    fn run<'a>(&mut self, x: &mut Ctx<TRaw,MachineEv>, (raw,ev): (Option<TRaw>,Ev)) -> ()
+    {
 
         let next = match (self.mode, &ev) {
             (Root, On(Mode("MAltShift"))) => [Then(Mode("AltShift"))].iter(),
 
             (Mode("AltShift"), Off(Mode("MAltShift"))) => [Then(Root)].iter(),
-            (Mode("AltShift"), Key(36, Down, _)) => [Then(Mode("AltShiftJ"))].iter(),
-            (Mode("AltShift"), Key(37, Down, _)) => [Then(Mode("AltShiftK"))].iter(),
-            (Mode("AltShift"), Key(57, Down, _)) => [Then(Mode("AltShiftSpace"))].iter(),
+            (Mode("AltShift"), Key(36, Down)) => [Then(Mode("AltShiftJ"))].iter(),
+            (Mode("AltShift"), Key(37, Down)) => [Then(Mode("AltShiftK"))].iter(),
+            (Mode("AltShift"), Key(57, Down)) => [Then(Mode("AltShiftSpace"))].iter(),
 
             (Mode("AltShiftJ"), Off(Mode("MAltShift"))) => [Emit(108, Up), Then(Root)].iter(),
-            (Mode("AltShiftJ"), Key(36, Up, _)) => {
+            (Mode("AltShiftJ"), Key(36, Up)) => {
                 [Drop, Emit(108, Up), Then(Mode("AltShift"))].iter()
             }
-            (Mode("AltShiftJ"), Key(36, Down, _)) => [Drop, Emit(108, Down)].iter(),
-            (Mode("AltShiftJ"), Key(37, Down, _)) => {
+            (Mode("AltShiftJ"), Key(36, Down)) => [Drop, Emit(108, Down)].iter(),
+            (Mode("AltShiftJ"), Key(37, Down)) => {
                 [Emit(108, Up), Then(Mode("AltShiftK"))].iter()
             }
-            (Mode("AltShiftJ"), Key(57, Down, _)) => {
+            (Mode("AltShiftJ"), Key(57, Down)) => {
                 [Emit(108, Up), Then(Mode("AltShiftSpace"))].iter()
             }
 
             (Mode("AltShiftK"), Off(Mode("MAltShift"))) => [Then(Root)].iter(),
-            (Mode("AltShiftK"), Key(37, Up, _)) => [Then(Mode("AltShift"))].iter(),
-            (Mode("AltShiftK"), Key(36, Down, _)) => [Then(Mode("AltShiftJ"))].iter(),
-            (Mode("AltShiftK"), Key(57, Down, _)) => [Then(Mode("AltShiftSpace"))].iter(),
+            (Mode("AltShiftK"), Key(37, Up)) => [Then(Mode("AltShift"))].iter(),
+            (Mode("AltShiftK"), Key(36, Down)) => [Then(Mode("AltShiftJ"))].iter(),
+            (Mode("AltShiftK"), Key(57, Down)) => [Then(Mode("AltShiftSpace"))].iter(),
 
             (Mode("AltShiftSpace"), Off(Mode("MAltShift"))) => [Then(Root)].iter(),
-            (Mode("AltShiftSpace"), Key(57, Up, _)) => [Then(Mode("AltShift"))].iter(),
-            (Mode("AltShiftSpace"), Key(36, Down, _)) => [Then(Mode("AltShiftJ"))].iter(),
-            (Mode("AltShiftSpace"), Key(37, Down, _)) => [Then(Mode("AltShiftK"))].iter(),
+            (Mode("AltShiftSpace"), Key(57, Up)) => [Then(Mode("AltShift"))].iter(),
+            (Mode("AltShiftSpace"), Key(36, Down)) => [Then(Mode("AltShiftJ"))].iter(),
+            (Mode("AltShiftSpace"), Key(37, Down)) => [Then(Mode("AltShiftK"))].iter(),
 
             _ => [].iter(),
         };
@@ -62,8 +59,8 @@ where
                     reemit = false;
                 }
 
-                Emit(c, m) => {
-                    x.emit(Key(*c, *m, None));
+                MachineEv(c, m) => {
+                    x.emit(Key(*c, *m));
                 }
 
                 Then(new_mode) => {

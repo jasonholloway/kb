@@ -1,8 +1,8 @@
-use crate::common::{Ev, Ev::*, Mode, Movement::*};
-use super::{Runnable, Ctx};
+use crate::common::{MachineEv, Ev, Ev::*, Mode, Movement::*};
+use super::{Runnable, Ctx, Sink};
 
 pub struct Machine<TRaw,TBody> {
-    pub context: Ctx<TRaw>,
+    pub context: Ctx<TRaw,MachineEv>,
     pub body: TBody,
     pub mode: Mode
 }
@@ -10,7 +10,7 @@ pub struct Machine<TRaw,TBody> {
 impl<TRaw,TBody> Machine<TRaw,TBody>
 where
     TRaw: std::fmt::Debug,
-    TBody: Runnable<TRaw>
+    TBody: Runnable<TRaw,Ev,MachineEv>
 {
     pub fn new(body: TBody) -> Machine<TRaw,TBody> {
         Machine {
@@ -20,11 +20,11 @@ where
         }
     }
 
-    fn run_handle(&mut self, x: &mut Ctx<TRaw>, ev: Ev<TRaw>) {
+    fn run_handle(&mut self, x: &mut Ctx<TRaw,MachineEv>, ev: Ev) {
         self.body.run(&mut self.context, ev);
 
         //there's a bug here in that all passed-through evs will be handled the same as freshly-minted ones
-        use crate::common::Emit::*;
+        use crate::common::MachineEv::*;
 
         while let Some(emit) = self.context.buff.pop_front() {
             match &emit {
@@ -51,7 +51,7 @@ where
                     }
                 },
 
-                Emit(ev2) => {
+                Ev(ev2) => {
                     self.context.maps.track_out(&ev2);
                     x.emit(*ev2);
                 },
@@ -68,11 +68,9 @@ where
     }
 }
 
-impl<TRaw: std::fmt::Debug, TBody> Runnable<TRaw> for Machine<TRaw,TBody>
-where
-    TBody: Runnable<TRaw>
+impl<TRaw,TBody> Runnable<TRaw,Ev,MachineEv> for Machine<TRaw,TBody>
 {
-    fn run(&mut self, x: &mut Ctx<TRaw>, ev: Ev<TRaw>) -> () {
+    fn run(&mut self, x: &mut Ctx<TRaw,MachineEv>, ev: (Option<TRaw>,Ev)) -> () {
 
         self.context.maps.track_in(&ev);
 

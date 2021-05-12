@@ -59,7 +59,7 @@ pub enum Action {
     Take,
 }
 
-pub enum Event<'a, R> {
-    In(&'a Ev<R>),
-    Out(&'a Ev<R>),
+pub enum Event<'a> {
+    In(&'a Ev),
+    Out(&'a Ev),
 }

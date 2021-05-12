@@ -4,21 +4,21 @@ mod runner_test;
 
 use std::collections::VecDeque;
 
-use super::{RunRef, Runnable, Ctx};
-use crate::common::{Emit, Emit::*, Ev, Ev::*};
+use super::{Ctx, RunRef, Runnable};
+use crate::common::{MachineEv, MachineEv::*, Ev};
 
 pub struct Runner<TRaw>
 {
-    pending: VecDeque<RunRef<TRaw>>,
-    seen: VecDeque<RunRef<TRaw>>,
-    buff1: VecDeque<Ev<TRaw>>,
-    buff2: VecDeque<Ev<TRaw>>,
-    context: Ctx<TRaw>
+    pending: VecDeque<RunRef<TRaw,Ev,MachineEv>>,
+    seen: VecDeque<RunRef<TRaw,Ev,MachineEv>>,
+    buff1: VecDeque<(Option<TRaw>,Ev)>,
+    buff2: VecDeque<(Option<TRaw>,Ev)>,
+    context: Ctx<TRaw,MachineEv>
 }
 
 impl<TRaw> Runner<TRaw>
 {
-    pub fn new(active: Vec<RunRef<TRaw>>) -> Runner<TRaw> {
+    pub fn new(active: Vec<RunRef<TRaw,Ev,MachineEv>>) -> Runner<TRaw> {
         Runner {
             pending: VecDeque::from(active),
             seen: VecDeque::new(),
@@ -29,9 +29,10 @@ impl<TRaw> Runner<TRaw>
     }
 }
 
-impl<TRaw> Runnable<TRaw> for Runner<TRaw>
+impl<TRaw> Runnable<TRaw,Ev,MachineEv> for Runner<TRaw>
 {
-    fn run(&mut self, x: &mut Ctx<TRaw>, ev: Ev<TRaw>) {
+    fn run(&mut self, x: &mut Ctx<TRaw,MachineEv>, ev: (Option<TRaw>,Ev))
+    {
         let mut buff1 = &mut self.buff1;
         let mut buff2 = &mut self.buff2;
         let mut pending = &mut self.pending;
@@ -50,14 +51,14 @@ impl<TRaw> Runnable<TRaw> for Runner<TRaw>
             for e1 in buff1.drain(0..) {
                 m.inner.run(&mut self.context, e1);
 
-                for emit in self.context.buff.drain(0..) {
-                    let e2 = emit;
+                for (d, e2) in self.context.buff.drain(0..) {
+                    // let e2 = emit;
                     match e2 {
-                        Emit(ev) => {
-                            buff2.push_back(ev);
+                        MachineEv(ev) => {
+                            buff2.push_back((d, ev));
                         },
-                        Spawn(m2) => {
-                            pending.push_front(m2);
+                        Spawn(name) => {
+                            pending.push_front(name);
                         },
                         Die => {
                             requeue = false;

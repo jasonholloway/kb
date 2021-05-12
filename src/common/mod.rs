@@ -1,22 +1,44 @@
-use crate::machines::{RunRef};
-
 #[derive(Debug,PartialEq)]
-pub enum Ev<TRaw> {
-    Key(u16, Movement, Option<TRaw>),
+pub enum CoreEv {
+    Key(u16, Movement),
     On(Mode),
     Off(Mode),
     Tick
 }
 
-pub enum Emit<TRaw> {
-    Emit(Ev<TRaw>),
+#[derive(Debug,PartialEq)]
+pub enum MachineEv {
     Now(Mode),
-    Die,
     MaskOn(u16),
     MaskOff(u16),
-    PassThru(Ev<TRaw>),
-    Spawn(RunRef<TRaw>),
 }
+
+#[derive(Debug,PartialEq)]
+pub enum RunnerEv {
+    Spawn(String),
+    Die
+}
+
+
+#[derive(Debug,PartialEq)]
+pub enum Out {
+    Core(CoreEv),
+    Machine(MachineEv),
+    Runner(RunnerEv)
+}
+
+#[derive(Debug,PartialEq)]
+pub enum MachineOut {
+    Core(CoreEv),
+    Runner(RunnerEv)
+}
+
+#[derive(Debug,PartialEq)]
+pub enum RunnerOut {
+    Core(CoreEv)
+}
+
+
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Movement {
@@ -41,18 +63,3 @@ pub enum Act {
 }
 
 pub type NextDue = u64;
-
-// #[derive(Debug)]
-// #[derive(Copy, Clone)]
-// pub enum Act {
-//     Mode(&'static str),
-// }
-
-// impl<TRaw> Emit<TRaw> {
-//     pub fn ev(self) -> Ev<TRaw> {
-//         match self {
-//             Emit::Emit(ev) => ev,
-//             Emit::PassThru(ev) => ev
-//         }
-//     }
-// }

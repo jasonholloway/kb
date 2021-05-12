@@ -19,15 +19,15 @@ impl KeyMaps {
         }
     }
 
-    pub fn track_in<TRaw>(&mut self, up: &Ev<TRaw>) {
+    pub fn track_in(&mut self, up: &Ev) {
         Self::gather_map(up, &mut self.pre);
     }
 
-    pub fn track_out<TRaw>(&mut self, up: &Ev<TRaw>) {
+    pub fn track_out(&mut self, up: &Ev) {
         Self::gather_map(up, &mut self.post);
     }
 
-    fn gather_map<T, T2: Bits>(event: &Ev<T>, map: &mut Bitmap<T2>) -> () {
+    fn gather_map<TBits: Bits>(event: &Ev, map: &mut Bitmap<TBits>) -> () {
         use Movement::*;
 
         if let Key(code, movement, _) = event {

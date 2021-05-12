@@ -1,10 +1,8 @@
 use typenum::*;
 use bitmaps::Bitmap;
 
-use super::{Runnable, Ctx};
+use super::{Ctx, Runnable, Sink};
 use crate::common::{Ev,Ev::*};
-use std::fmt::Debug;
-
 
 pub struct PrintKeys {
     tabs: u8,
@@ -19,7 +17,7 @@ impl PrintKeys {
         }
     }
 
-    fn print<TRaw>(&self, bits: &Bitmap<U1024>, ev: &Ev<TRaw>)
+    fn print(&self, bits: &Bitmap<U1024>, ev: &Ev)
     {
         let new_code = if let Key(c, _, _) = ev { *c } else { 0 as u16 };
 
@@ -45,11 +43,9 @@ impl PrintKeys {
     }
 }
 
-impl<TRaw> Runnable<TRaw> for PrintKeys
-where
-    TRaw: Debug
+impl<TRaw,TOut> Runnable<TRaw,Ev,TOut> for PrintKeys
 {
-    fn run(&mut self, x: &mut Ctx<TRaw>, ev: Ev<TRaw>) {
+    fn run(&mut self, x: &mut Ctx<TRaw,TOut>, (_,ev): (Option<TRaw>,Ev)) {
         let maps = &x.maps;
         
         if let Key(_, _, _) = ev {
