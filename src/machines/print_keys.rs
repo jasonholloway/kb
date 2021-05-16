@@ -1,8 +1,9 @@
 use typenum::*;
 use bitmaps::Bitmap;
 
-use super::{Ctx, Runnable, Sink};
-use crate::common::{Ev,Ev::*};
+use crate::common::{CoreEv, CoreEv::*, Out};
+
+use super::{Ctx, Runnable};
 
 pub struct PrintKeys {
     tabs: u8,
@@ -17,9 +18,9 @@ impl PrintKeys {
         }
     }
 
-    fn print(&self, bits: &Bitmap<U1024>, ev: &Ev)
+    fn print(&self, bits: &Bitmap<U1024>, ev: &CoreEv)
     {
-        let new_code = if let Key(c, _, _) = ev { *c } else { 0 as u16 };
+        let new_code = if let Key(c, _) = ev { *c } else { 0 as u16 };
 
         print!("{}", (0..self.tabs).map(|_| '\t').collect::<String>());
 
@@ -43,15 +44,15 @@ impl PrintKeys {
     }
 }
 
-impl<TRaw,TOut> Runnable<TRaw,Ev,TOut> for PrintKeys
+impl<TRaw> Runnable<TRaw,CoreEv,Out> for PrintKeys
 {
-    fn run(&mut self, x: &mut Ctx<TRaw,TOut>, (_,ev): (Option<TRaw>,Ev)) {
+    fn run(&mut self, x: &mut Ctx<TRaw,Out>, (raw, ev): (Option<TRaw>,CoreEv)) {
         let maps = &x.maps;
         
-        if let Key(_, _, _) = ev {
+        if let Key(_, _) = ev {
             self.print(&maps.pre, &ev);
         }
 
-        x.emit(ev);
+        x.emit((raw, Out::Core(ev)));
     }
 }

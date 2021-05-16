@@ -1,5 +1,5 @@
-use super::{Ctx, Runnable, Sink};
-use crate::common::{MachineEv,Act::*, Mode, Mode::*,Ev,Ev::*,Movement::*};
+use super::{Ctx, Runnable};
+use crate::common::{Act::*, CoreEv, Mode, Mode::*, Movement::*, Out};
 
 pub struct LeadMachine {
     mode: Mode,
@@ -13,10 +13,11 @@ impl LeadMachine {
     }
 }
 
-impl<TRaw> Runnable<TRaw,Ev,MachineEv> for LeadMachine
+impl<TRaw> Runnable<TRaw,CoreEv,Out> for LeadMachine
 {
-    fn run<'a>(&mut self, x: &mut Ctx<TRaw,MachineEv>, (raw,ev): (Option<TRaw>,Ev)) -> ()
+    fn run<'a>(&mut self, x: &mut Ctx<TRaw,Out>, (raw, ev): (Option<TRaw>,CoreEv)) -> ()
     {
+        use CoreEv::*;
 
         let next = match (self.mode, &ev) {
             (Root, On(Mode("MAltShift"))) => [Then(Mode("AltShift"))].iter(),
@@ -58,14 +59,14 @@ impl<TRaw> Runnable<TRaw,Ev,MachineEv> for LeadMachine
                 Drop => {
                     reemit = false;
                 }
-
-                MachineEv(c, m) => {
-                    x.emit(Key(*c, *m));
+                
+                Emit(c, m) => {
+                    x.emit((None, Out::Core(Key(*c, *m))));
                 }
 
                 Then(new_mode) => {
-                    x.emit(Off(self.mode));
-                    x.emit(On(*new_mode));
+                    x.emit((None, Out::Core(Off(self.mode))));
+                    x.emit((None, Out::Core(On(*new_mode))));
                     self.mode = *new_mode;
 
                     println!("\t\t{:?}", *new_mode);
@@ -78,7 +79,7 @@ impl<TRaw> Runnable<TRaw,Ev,MachineEv> for LeadMachine
         }
 
         if reemit {
-            x.emit(ev);
+            x.emit((raw, Out::Core(ev)));
         }
     }
 }

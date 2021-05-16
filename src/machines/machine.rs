@@ -1,16 +1,15 @@
-use crate::common::{MachineEv, Ev, Ev::*, Mode, Movement::*};
-use super::{Runnable, Ctx, Sink};
+use crate::common::{CoreEv, Out, MachineEv, MachineOut, Mode, Movement::*};
+use super::{Runnable, Ctx};
 
 pub struct Machine<TRaw,TBody> {
-    pub context: Ctx<TRaw,MachineEv>,
+    pub context: Ctx<TRaw,Out>,
     pub body: TBody,
     pub mode: Mode
 }
 
 impl<TRaw,TBody> Machine<TRaw,TBody>
 where
-    TRaw: std::fmt::Debug,
-    TBody: Runnable<TRaw,Ev,MachineEv>
+    TBody: Runnable<TRaw,CoreEv,Out>
 {
     pub fn new(body: TBody) -> Machine<TRaw,TBody> {
         Machine {
@@ -20,66 +19,80 @@ where
         }
     }
 
-    fn run_handle(&mut self, x: &mut Ctx<TRaw,MachineEv>, ev: Ev) {
-        self.body.run(&mut self.context, ev);
+    fn run_handle(&mut self, inp: (Option<TRaw>,CoreEv)) {
+        {
+            self.body.run(&mut self.context, inp);
+        }
 
+        //TODO
         //there's a bug here in that all passed-through evs will be handled the same as freshly-minted ones
-        use crate::common::MachineEv::*;
+        let x = &mut self.context;
 
-        while let Some(emit) = self.context.buff.pop_front() {
-            match &emit {
-                MaskOn(c) => {
-                    let is_maskable = !self.context.maps.mask.set(*c as usize, true);
+        use CoreEv::*;
+        use MachineEv::*;
+        use Out::*;
 
-                    if is_maskable && self.context.maps.post.get(*c as usize) {
-                        self.run_handle(x, Key(*c, Up, None));
+        while let Some((d, ev)) = x.buff.pop_front() {
+            match &ev {
+                Machine(MaskOn(c)) => {
+                    let is_maskable = !x.maps.mask.set(*c as usize, true);
+
+                    if is_maskable && x.maps.post.get(*c as usize) {
+                        let ev2 = Key(*c, Up);
+                        x.maps.track_out(&ev2);
+                        x.emit((None, Core(ev2)));
                     }
                 },
-                MaskOff(c) => {
-                    let unmaskable = self.context.maps.mask.set(*c as usize, false);
+
+                Machine(MaskOff(c)) => {
+                    let unmaskable = x.maps.mask.set(*c as usize, false);
 
                     if unmaskable {
-                        match (self.context.maps.pre.get(*c as usize), self.context.maps.post.get(*c as usize)) {
+                        match (x.maps.pre.get(*c as usize), x.maps.post.get(*c as usize)) {
                             (true, false) => {
-                                self.run_handle(x, Key(*c, Down, None));
+                                let ev2 = Key(*c, Down);
+                                x.maps.track_out(&ev2);
+                                x.emit((None, Core(ev2)));
                             },
                             (false, true) => {
-                                self.run_handle(x, Key(*c, Up, None));
+                                let ev2 = Key(*c, Up);
+                                x.maps.track_out(&ev2);
+                                x.emit((None, Core(ev2)));
                             },
                             _ => {}
                         }
                     }
                 },
 
-                Ev(ev2) => {
-                    self.context.maps.track_out(&ev2);
-                    x.emit(*ev2);
+                Machine(Now(_)) => {},
+
+                Core(peek) => {
+                    x.maps.track_out(&peek);
+                    x.emit((d, ev));
                 },
 
-                PassThru(ev2) => {
-                    self.context.maps.track_out(&ev2);
-                    x.emit(*ev2);
-                } ,
-                Now(_) => {},
-                Die => {} //to pass back out to runner?
+                Runner(_) => {
+                    x.emit((d, ev));
+                }
             }
         }
 
     }
 }
 
-impl<TRaw,TBody> Runnable<TRaw,Ev,MachineEv> for Machine<TRaw,TBody>
+impl<TRaw,TBody> Runnable<TRaw,CoreEv,MachineOut> for Machine<TRaw,TBody>
+    where TBody: Runnable<TRaw,CoreEv,Out>
 {
-    fn run(&mut self, x: &mut Ctx<TRaw,MachineEv>, ev: (Option<TRaw>,Ev)) -> () {
-
+    fn run(&mut self, x: &mut Ctx<TRaw,MachineOut>, (d, ev): (Option<TRaw>,CoreEv)) -> ()
+    {
         self.context.maps.track_in(&ev);
 
-        if let Key(c, _, _) = ev {
+        if let CoreEv::Key(c, _) = ev {
             if self.context.maps.mask.get(c.into()) {
                 return;
             }
         }
 
-        self.run_handle(x, ev)
+        self.run_handle((d, ev))
     }
 }

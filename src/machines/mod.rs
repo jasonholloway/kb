@@ -17,7 +17,7 @@ pub mod print_keys;
 
 use std::collections::vec_deque::*;
 
-use crate::common::{MachineEv, Ev};
+use crate::common::{CoreEv, MachineEv, Movement, Out};
 
 use self::key_maps::KeyMaps;
 
@@ -76,6 +76,28 @@ impl<TRaw,TOut> Ctx<TRaw,TOut> {
 
 }
 
+impl<TRaw> Ctx<TRaw,Out> {
+    pub fn key_down(&mut self, code: u16) {
+        self.emit((None, Out::Core(CoreEv::Key(code, Movement::Down))))
+    }
+
+    pub fn key_up(&mut self, code: u16) {
+        self.emit((None, Out::Core(CoreEv::Key(code, Movement::Up))))
+    }
+
+    pub fn mask<T: IntoIterator<Item=&'static u16>>(&mut self, codes: T) {
+        for c in codes {
+            self.emit((None, Out::Machine(MachineEv::MaskOn(*c))))
+        }
+    }
+
+    pub fn unmask<T: IntoIterator<Item=&'static u16>>(&mut self, codes: T) {
+        for c in codes {
+            self.emit((None, Out::Machine(MachineEv::MaskOff(*c))))
+        }
+    }
+}
+
 // impl<TRaw,TOut> Sink<(Option<TRaw>,TOut)> for Ctx<TRaw,TOut> {
 
 //     // pub fn pass_thru(&mut self, ev: (Option<TRaw>,TOut)) {
@@ -103,17 +125,17 @@ impl<TRaw,TOut> Ctx<TRaw,TOut> {
 
 
 
-pub trait Sink<TOut> {
-    fn emit(&mut self, el: TOut) -> ();
-}
+// pub trait Sink<TOut> {
+//     fn emit(&mut self, el: TOut) -> ();
+// }
 
-impl<TOut> Sink<TOut> {
-    fn emit_many<T: IntoIterator<Item=TOut>>(&mut self, evs: T) {
-        for ev in evs {
-            self.emit(ev)
-        }
-    }
-}
+// impl<TOut> Sink<TOut> {
+//     fn emit_many<T: IntoIterator<Item=TOut>>(&mut self, evs: T) {
+//         for ev in evs {
+//             self.emit(ev)
+//         }
+//     }
+// }
 
 
 

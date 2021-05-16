@@ -1,7 +1,7 @@
 use std::fmt::Debug;
-use crate::common::{MachineEv, Ev, Ev::*, Movement::*};
+use crate::common::{CoreEv, Out, Movement::*};
 use crate::Action::*;
-use super::{Ctx, Runnable, Sink};
+use super::{Ctx, Runnable};
 
 
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -28,78 +28,81 @@ impl BigMachine {
     }
 }
 
-impl<TRaw> Runnable<TRaw,Ev,MachineEv> for BigMachine
+impl<TRaw> Runnable<TRaw,CoreEv,Out> for BigMachine
 {
-    fn run<'a>(&mut self, x: &mut Ctx<TRaw,MachineEv>, ev: (Option<TRaw>,Ev)) -> ()
+    fn run<'a>(&mut self, x: &mut Ctx<TRaw,Out>, inp: (Option<TRaw>,CoreEv)) -> ()
     {
         use Mode::*;
+        use CoreEv::*;
+
+        let (raw, ev) = inp;
 
         let prev_mode = self.mode;
 
         let next_mode = match (prev_mode, &ev) {
-            (Root, Key(42, Down, _)) => Shift,
-            (Root, Key(56, Down, _)) => Alt,
+            (Root, Key(42, Down)) => Shift,
+            (Root, Key(56, Down)) => Alt,
 
-            (Shift, Key(42, Up, _)) => Root,
-            (Shift, Key(56, Down, _)) => AltShift,
+            (Shift, Key(42, Up)) => Root,
+            (Shift, Key(56, Down)) => AltShift,
 
-            (Alt, Key(56, Up, _)) => Root,
-            (Alt, Key(42, Down, _)) => AltShift,
+            (Alt, Key(56, Up)) => Root,
+            (Alt, Key(42, Down)) => AltShift,
 
-            (AltShift, Key(42, Up, _)) => Alt,
-            (AltShift, Key(56, Up, _)) => Shift,
-            (AltShift, Key(36, Down, _)) => AltShiftJ,
-            (AltShift, Key(37, Down, _)) => AltShiftK,
-            (AltShift, Key(57, Down, _)) => AltShiftSpace,
+            (AltShift, Key(42, Up)) => Alt,
+            (AltShift, Key(56, Up)) => Shift,
+            (AltShift, Key(36, Down)) => AltShiftJ,
+            (AltShift, Key(37, Down)) => AltShiftK,
+            (AltShift, Key(57, Down)) => AltShiftSpace,
 
-            (AltShiftSpace, Key(42, Up, _)) => Root,
-            (AltShiftSpace, Key(56, Up, _)) => Root,
-            (AltShiftSpace, Key(57, Up, _)) => AltShift,
+            (AltShiftSpace, Key(42, Up)) => Root,
+            (AltShiftSpace, Key(56, Up)) => Root,
+            (AltShiftSpace, Key(57, Up)) => AltShift,
 
-            (AltShiftJ, Key(42, Up, _)) => Root,
-            (AltShiftJ, Key(56, Up, _)) => Root,
-            (AltShiftJ, Key(36, Up, _)) => AltShift,
+            (AltShiftJ, Key(42, Up)) => Root,
+            (AltShiftJ, Key(56, Up)) => Root,
+            (AltShiftJ, Key(36, Up)) => AltShift,
 
-            (AltShiftK, Key(42, Up, _)) => Root,
-            (AltShiftK, Key(56, Up, _)) => Root,
-            (AltShiftK, Key(37, Up, _)) => AltShift,
+            (AltShiftK, Key(42, Up)) => Root,
+            (AltShiftK, Key(56, Up)) => Root,
+            (AltShiftK, Key(37, Up)) => AltShift,
 
             _ => prev_mode
         };
 
         let action = match (prev_mode, next_mode, &ev) {
 
-            (_, AltShiftSpace, Key(57, Down, _)) => {
+            (_, AltShiftSpace, Key(57, Down)) => {
                 x.mask(&[42, 56]);
-                x.emit(Key(28, Down, None));
+                x.key_down(28);
                 Take
             },
-            (AltShiftSpace, _, Key(57, Up, _)) => {
-                x.emit(Key(28, Up, None));
+            (AltShiftSpace, _, Key(57, Up)) => {
+                x.key_up(28);
                 x.unmask(&[42, 56]);
                 Take
             },
 
 
-            (_, AltShiftJ, Key(36, Down, _)) => {
+            (_, AltShiftJ, Key(36, Down)) => {
                 x.mask(&[42, 56]);
-                x.emit(Key(108, Down, None));
+                x.key_down(108);
                 Take
             },
-            (AltShiftJ, _, Key(36, Up, _)) => {
-                x.emit(Key(108, Up, None));
+            (AltShiftJ, _, Key(36, Up)) => {
+                x.key_up(108);
                 x.unmask(&[42, 56]);
                 Take
             },
 
 
-            (_, AltShiftK, Key(37, Down, _)) => {
+            (_, AltShiftK, Key(37, Down)) => {
                 x.mask(&[42, 56]); //should do this on entry/exit rather than each keypress
-                x.emit(Key(103, Down, None));
+                x.key_down(103);
                 Take
             },
-            (AltShiftK, _, Key(37, Up, _)) => {
-                x.emit(Key(103, Up, None));
+            (AltShiftK, _, Key(37, Up)) => {
+                x.key_up(103);
                 x.unmask(&[42, 56]);
                 Take
             },
@@ -109,12 +112,7 @@ impl<TRaw> Runnable<TRaw,Ev,MachineEv> for BigMachine
 
         match action {
             Skip => {
-                if let Key(_, _, raw) = &ev {
-                    match raw {
-                        Some(_) => x.emit(ev),
-                        None => {}
-                    }
-                }
+                x.emit((raw, Out::Core(ev)))
             },
             Take => {}
         };

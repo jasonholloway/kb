@@ -12,7 +12,7 @@ extern crate spectral;
 
 
 use common::*;
-use machines::{RunRef, big_machine::BigMachine, lead_machine::LeadMachine, machine::Machine, mode_machine::ModeMachine, print_keys::PrintKeys, runner::Runner};
+use machines::{RunRef, machine::Machine, mode_machine::ModeMachine, print_keys::PrintKeys, runner::Runner};
 use std::fmt::Debug;
 
 #[cfg(windows)]
@@ -59,7 +59,7 @@ pub enum Action {
     Take,
 }
 
-pub enum Event<'a> {
-    In(&'a Ev),
-    Out(&'a Ev),
-}
+// pub enum Event<'a> {
+//     In(&'a Ev),
+//     Out(&'a Ev),
+// }

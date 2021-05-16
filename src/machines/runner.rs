@@ -5,20 +5,20 @@ mod runner_test;
 use std::collections::VecDeque;
 
 use super::{Ctx, RunRef, Runnable};
-use crate::common::{MachineEv, MachineEv::*, Ev};
+use crate::common::{CoreEv, MachineOut, RunnerEv, RunnerOut};
 
 pub struct Runner<TRaw>
 {
-    pending: VecDeque<RunRef<TRaw,Ev,MachineEv>>,
-    seen: VecDeque<RunRef<TRaw,Ev,MachineEv>>,
-    buff1: VecDeque<(Option<TRaw>,Ev)>,
-    buff2: VecDeque<(Option<TRaw>,Ev)>,
-    context: Ctx<TRaw,MachineEv>
+    pending: VecDeque<RunRef<TRaw,CoreEv,MachineOut>>,
+    seen: VecDeque<RunRef<TRaw,CoreEv,MachineOut>>,
+    buff1: VecDeque<(Option<TRaw>,CoreEv)>,
+    buff2: VecDeque<(Option<TRaw>,CoreEv)>,
+    context: Ctx<TRaw,MachineOut>
 }
 
 impl<TRaw> Runner<TRaw>
 {
-    pub fn new(active: Vec<RunRef<TRaw,Ev,MachineEv>>) -> Runner<TRaw> {
+    pub fn new(active: Vec<RunRef<TRaw,CoreEv,MachineOut>>) -> Runner<TRaw> {
         Runner {
             pending: VecDeque::from(active),
             seen: VecDeque::new(),
@@ -29,9 +29,9 @@ impl<TRaw> Runner<TRaw>
     }
 }
 
-impl<TRaw> Runnable<TRaw,Ev,MachineEv> for Runner<TRaw>
+impl<TRaw> Runnable<TRaw,CoreEv,RunnerOut> for Runner<TRaw>
 {
-    fn run(&mut self, x: &mut Ctx<TRaw,MachineEv>, ev: (Option<TRaw>,Ev))
+    fn run(&mut self, x: &mut Ctx<TRaw,RunnerOut>, inp: (Option<TRaw>,CoreEv))
     {
         let mut buff1 = &mut self.buff1;
         let mut buff2 = &mut self.buff2;
@@ -42,7 +42,7 @@ impl<TRaw> Runnable<TRaw,Ev,MachineEv> for Runner<TRaw>
             return;
         }
 
-        buff1.push_back(ev);
+        buff1.push_back(inp);
 
         while let Some(mut m) = pending.pop_front() {
 
@@ -54,16 +54,15 @@ impl<TRaw> Runnable<TRaw,Ev,MachineEv> for Runner<TRaw>
                 for (d, e2) in self.context.buff.drain(0..) {
                     // let e2 = emit;
                     match e2 {
-                        MachineEv(ev) => {
+                        MachineOut::Core(ev) => {
                             buff2.push_back((d, ev));
                         },
-                        Spawn(name) => {
-                            pending.push_front(name);
+                        MachineOut::Runner(RunnerEv::Spawn(name)) => {
+                            // pending.push_front(name);
                         },
-                        Die => {
+                        MachineOut::Runner(RunnerEv::Die) => {
                             requeue = false;
-                        },
-                        _ => {}
+                        }
                     }
                 }
             }
@@ -77,6 +76,8 @@ impl<TRaw> Runnable<TRaw,Ev,MachineEv> for Runner<TRaw>
 
         pending.extend(seen.drain(0..));
 
-        x.emit_many(buff1.drain(0..));
+        for (d, ev) in buff1.drain(0..) {
+            x.emit((d, RunnerOut::Core(ev)))
+        }
     }
 }

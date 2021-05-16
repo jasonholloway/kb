@@ -1,6 +1,6 @@
-use super::{Ctx, RunRef, Runnable, Sink, machine::Machine};
+use super::{Ctx, Runnable};
 use crate::common::{Act::*, Mode, Mode::*};
-use crate::common::{MachineEv,Movement::*, Ev,Ev::*};
+use crate::common::{Movement::*,Out,CoreEv,Out::*,CoreEv::*,RunnerEv::*};
 
 pub struct ModeMachine {
     mode: Mode,
@@ -14,24 +14,24 @@ impl ModeMachine {
     }
 }
 
-impl<TRaw> Runnable<TRaw,Ev,MachineEv> for ModeMachine
+impl<TRaw> Runnable<TRaw,CoreEv,Out> for ModeMachine
 {
-    fn run<'a>(&mut self, x: &mut Ctx<TRaw,MachineEv>, ev: (Option<TRaw>,Ev))
+    fn run<'a>(&mut self, x: &mut Ctx<TRaw,Out>, (raw, ev): (Option<TRaw>,CoreEv))
     {
         let next = match (self.mode, &ev) {
-            (Root, Key(42, Down, _)) => [Then(Mode("MShift"))].iter(),
-            (Root, Key(56, Down, _)) => [Then(Mode("MAlt"))].iter(),
+            (Root, Key(42, Down)) => [Then(Mode("MShift"))].iter(),
+            (Root, Key(56, Down)) => [Then(Mode("MAlt"))].iter(),
 
-            (Mode("MShift"), Key(42, Up, _)) => [Then(Root)].iter(),
-            (Mode("MShift"), Key(56, Down, _)) => [Then(Mode("MAltShift"))].iter(),
+            (Mode("MShift"), Key(42, Up)) => [Then(Root)].iter(),
+            (Mode("MShift"), Key(56, Down)) => [Then(Mode("MAltShift"))].iter(),
 
-            (Mode("MAlt"), Key(56, Up, _)) => [Then(Root)].iter(),
-            (Mode("MAlt"), Key(42, Down, _)) => [Then(Mode("MAltShift"))].iter(),
+            (Mode("MAlt"), Key(56, Up)) => [Then(Root)].iter(),
+            (Mode("MAlt"), Key(42, Down)) => [Then(Mode("MAltShift"))].iter(),
 
-            (Mode("MAltShift"), Key(42, Up, _)) => [Then(Mode("MAlt"))].iter(),
-            (Mode("MAltShift"), Key(56, Up, _)) => [Then(Mode("MShift"))].iter(),
+            (Mode("MAltShift"), Key(42, Up)) => [Then(Mode("MAlt"))].iter(),
+            (Mode("MAltShift"), Key(56, Up)) => [Then(Mode("MShift"))].iter(),
 
-            (Mode("MAltShift"), Key(36, Down, _)) => [Launch("AltShiftJ")].iter(),
+            (Mode("MAltShift"), Key(36, Down)) => [Launch("AltShiftJ")].iter(),
 
             _ => [].iter(),
         };
@@ -44,13 +44,13 @@ impl<TRaw> Runnable<TRaw,Ev,MachineEv> for ModeMachine
                     reemit = false;
                 }
 
-                MachineEv(c, m) => {
-                    x.emit(Key(*c, *m, None));
+                Emit(c, m) => {
+                    x.emit((None, Core(Key(*c, *m))));
                 }
 
                 Then(new_mode) => {
-                    x.emit(Off(self.mode));
-                    x.emit(On(*new_mode));
+                    x.emit((None, Core(Off(self.mode))));
+                    x.emit((None, Core(On(*new_mode))));
                     self.mode = *new_mode;
 
                     println!("\t\t{:?}", *new_mode);
@@ -60,13 +60,13 @@ impl<TRaw> Runnable<TRaw,Ev,MachineEv> for ModeMachine
                 Map(from, to) => {}
                 Launch(name) => {
                     //should be registered such that a changing mode will cause it to die...
-                    x.spawn(RunRef::new("", Machine::new(ModeMachine::new())))
+                    x.emit((None, Runner(Spawn((*name).to_string()))));
                 }
             }
         }
 
         if reemit {
-            x.emit(ev);
+            x.emit((raw, Core(ev)));
         }
         
     }

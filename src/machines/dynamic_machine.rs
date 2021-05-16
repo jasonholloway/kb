@@ -1,13 +1,12 @@
-use crate::common::{MachineEv, Ev};
-
-use super::{Ctx, Runnable, Sink};
+use crate::common::{CoreEv, Out};
+use super::{Ctx, Runnable};
 
 pub struct DynamicMachine {}
 
-impl<TRaw> Runnable<TRaw,Ev,MachineEv> for DynamicMachine
+impl<TRaw> Runnable<TRaw,CoreEv,Out> for DynamicMachine
 {
-    fn run(&mut self, x: &mut Ctx<TRaw,MachineEv>, ev: (Option<TRaw>,Ev)) -> ()
+    fn run(&mut self, x: &mut Ctx<TRaw,Out>, (raw, ev): (Option<TRaw>,CoreEv)) -> ()
     {
-        x.emit(ev);
+        x.emit((raw, Out::Core(ev)));
     }
 }

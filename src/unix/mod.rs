@@ -5,8 +5,8 @@ mod glob;
 #[cfg(test)]
 mod test;
 
-use crate::{Movement::*, machines::{Runnable, Ctx}};
-use crate::common::{Ev::*,Ev,MachineEv};
+use crate::{Movement::*, common::{CoreEv, RunnerOut}, machines::{Runnable, Ctx}};
+use crate::common::{CoreEv::*,RunnerOut::*};
 use evdev_rs::enums::*;
 use evdev_rs::*;
 use std::convert::TryFrom;
@@ -27,9 +27,8 @@ enum Mode {
 
 pub fn run<'a, TRun>(dev_pattern: &str, runnable: &mut TRun) -> Result<(), Error>
 where
-    TRun: Runnable<InputEvent,Ev,MachineEv>
+    TRun: Runnable<InputEvent,CoreEv,RunnerOut>
 {
-
     let dev_path = find_file(dev_pattern).unwrap();
     dbg!(&dev_path);
     
@@ -45,8 +44,6 @@ where
     // let mut buff = VecDeque::new();
     let mut x = Ctx::new();
     let mut mode: Mode = Mode::Read;
-
-    use crate::common::MachineEv::*;
 
     loop {
         let res = match mode {
@@ -71,13 +68,13 @@ where
                                 runnable.run(&mut x, (Some(ev), update));
 
                                 if !x.buff.is_empty() {
-                                    for (raw,emit) in x.buff.drain(0..) {
-                                        match (raw,emit) {
-                                            (Some(r), Ev(Key(_, _))) => {
+                                    for (raw,out) in x.buff.drain(0..) {
+                                        match (raw,out) {
+                                            (Some(r), Core(Key(_, _))) => {
                                                 sink.write_event(&r).unwrap();
                                             },
 
-                                            (None, Ev(Key(c, m))) => {
+                                            (None, Core(Key(c, m))) => {
                                                 sink.write_event(&InputEvent {
                                                     time: TimeVal::try_from(SystemTime::now())
                                                         .unwrap(),
@@ -136,13 +133,13 @@ where
                     runnable.run(&mut x, (None, Tick));
 
                    if !x.buff.is_empty() {
-                        for (raw,emit) in x.buff.drain(0..) {
-                            match (raw,emit) {
-                                (Some(r), Ev(Key(_, _))) => {
+                        for (raw,out) in x.buff.drain(0..) {
+                            match (raw,out) {
+                                (Some(r), Core(Key(_, _))) => {
                                     sink.write_event(&r).unwrap();
                                 }
 
-                                (None, Ev(Key(c, m))) => {
+                                (None, Core(Key(c, m))) => {
                                     sink.write_event(&InputEvent {
                                         time: TimeVal::try_from(SystemTime::now()).unwrap(),
                                         event_type: EventType::EV_KEY,
