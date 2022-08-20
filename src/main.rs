@@ -7,6 +7,7 @@ extern crate libc;
 use common::*;
 use bitmaps::*;
 use typenum::*; 
+use std::{thread,time};
 
 #[cfg(windows)]
 mod windows;
@@ -30,6 +31,9 @@ fn create_handler<T>() -> Handler<T> {
 }
 
 pub fn main() {
+    //short delay to avoid capturing return key on start
+    thread::sleep(time::Duration::from_millis(500));
+    
     cfg_if::cfg_if! {
         if #[cfg(windows)] {
             windows::run(create_handler).unwrap();
