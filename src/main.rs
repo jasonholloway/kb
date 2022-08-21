@@ -168,6 +168,18 @@ where TRaw: Debug
             },
 
 
+            (_, AltShift, Key(35, Down, _)) => {
+                self.mask_add(&[42, 56]);
+                self.buff.push_back(Key(105, Down, None));
+                Take
+            },
+            (AltShift, _, Key(35, Up, _)) => {
+                self.buff.push_back(Key(105, Up, None));
+                self.mask_reset(&[42, 56]);
+                Take
+            },
+
+
             (_, AltShiftJ, Key(36, Down, _)) => {
                 self.mask_add(&[42, 56]);
                 self.buff.push_back(Key(108, Down, None));
@@ -187,6 +199,18 @@ where TRaw: Debug
             },
             (AltShiftK, _, Key(37, Up, _)) => {
                 self.buff.push_back(Key(103, Up, None));
+                self.mask_reset(&[42, 56]);
+                Take
+            },
+
+
+            (_, AltShift, Key(38, Down, _)) => {
+                self.mask_add(&[42, 56]);
+                self.buff.push_back(Key(106, Down, None));
+                Take
+            },
+            (AltShift, _, Key(38, Up, _)) => {
+                self.buff.push_back(Key(106, Up, None));
                 self.mask_reset(&[42, 56]);
                 Take
             },
