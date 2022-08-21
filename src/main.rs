@@ -145,6 +145,17 @@ where TRaw: Debug
 
         let action = match (prev_mode, next_mode, &update) {
 
+            (_, _, Key(58, Down, _)) => {
+                self.buff.push_back(Key(1, Down, None));
+                Take
+            },
+
+            (_, _, Key(58, Up, _)) => {
+                self.buff.push_back(Key(1, Up, None));
+                Take
+            },
+
+
             (_, AltShiftSpace, Key(57, Down, _)) => {
                 self.mask_add(&[42, 56]);
                 self.buff.push_back(Key(28, Down, None));
