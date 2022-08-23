@@ -35,7 +35,8 @@ pub enum MachineOut {
 
 #[derive(Debug,PartialEq)]
 pub enum RunnerOut {
-    Core(CoreEv)
+    Core(CoreEv),
+    Runner(RunnerEv)
 }
 
 

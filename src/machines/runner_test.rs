@@ -1,5 +1,7 @@
-use crate::machines::{Runnable, Ctx};
-use crate::common::{Ev,Ev::*,Movement::*};
+use crate::{common::{RunnerEv, RunnerOut}, machines::{Runnable, Ctx}};
+use crate::common::{CoreEv,Movement};
+use CoreEv::*;
+use Movement::*;
 
 use super::Runner;
 use super::super::RunRef;
@@ -37,7 +39,7 @@ fn accumulates_in_sink_buffer() {
 
 #[test]
 fn empty_set_opaque() {
-    let mut runner = Runner::<Ev<()>>::new(vec![]);
+    let mut runner = Runner::<CoreEv<()>>::new(vec![]);
 
     let mut sink = Ctx::new();
 
@@ -101,16 +103,16 @@ struct Mayfly {
     life: u8,
 }
 
-impl Runnable<Ev<()>> for Mayfly
+impl Runnable<(), CoreEv, RunnerOut> for Mayfly
 {
-    fn run(&mut self, x: &mut Ctx<Ev<()>>, ev: Ev<()>) {
+    fn run(&mut self, x: &mut Ctx<(), RunnerOut>, ev: ((), CoreEv)) {
         if self.life > 0 {
             println!("reemitting");
             x.emit(ev);
             self.life -= 1;
         }
         else{
-            x.emit(Ev::Die {});
+            x.emit(RunnerOut::Runner(RunnerEv::Die));
         }
     }
 }
@@ -121,19 +123,21 @@ struct Redoubler {
     depth: u16
 }
 
-impl Runnable<Ev<()>> for Redoubler
+impl Runnable<(), CoreEv, RunnerOut> for Redoubler
 {
-    fn run(&mut self, x: &mut Ctx<Ev<()>>, ev: Ev<()>) {
+    fn run(&mut self, x: &mut Ctx<(), RunnerOut>, ev: ((), CoreEv)) {
         println!("D{:?} I{:?} E{:?}", self.depth, self.i, &ev);
 
         x.emit(ev);
         x.emit(Key(self.depth, Down, None));
 
         if self.depth > 0 {
-            x.emit(Ev::Spawn(RunRef {
-                tag: "baz",
-                inner: Box::new(Redoubler { i: self.i + 1, depth: self.depth - 1 })
-            }))
+            x.emit((None, RunnerOut::Runner(RunnerEv::Spawn("bob"))));
+
+            // RunRef {
+            //     tag: "baz",
+            //     inner: Box::new(Redoubler { i: self.i + 1, depth: self.depth - 1 })
+            // }))
         }
     }
 }
@@ -144,9 +148,9 @@ struct TestMachine {
     count: u16,
 }
 
-impl Runnable<Ev<()>> for TestMachine
+impl Runnable<(), CoreEv, RunnerOut> for TestMachine
 {
-    fn run(&mut self, x: &mut Ctx<Ev<()>>, ev: Ev<()>) {
+    fn run(&mut self, x: &mut Ctx<(), RunnerOut>, ev: ((), CoreEv)) {
 
         for i in 0..self.count {
             dbg!(i);

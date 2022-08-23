@@ -147,6 +147,22 @@ pub trait Runnable<TRaw,TIn,TOut>
 
 
 
+
+pub trait RunnableEx<TRaw,TIn,TOut> {
+    fn run(&mut self, x: &mut Ctx<TRaw,TOut>, ev: TIn) -> ();
+}
+
+impl<TRaw,TIn,TOut,TRunnable>  TRunnable
+    where TRunnable: Runnable<TRaw,TIn,TOut>
+{
+    fn run2(&mut self, x: &mut Ctx<TRaw,TOut>, ev: TIn) -> () {
+        todo!()
+    }
+}
+
+
+
+
 // pub trait HasMaps {
 //     fn maps(&self) -> &KeyMaps;
 // }
