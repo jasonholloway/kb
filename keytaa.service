@@ -1,0 +1,10 @@
+[Unit]
+Description=Keytaa for keyboard chord and gestures
+Requires=basic.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/keytaa
+
+[Install]
+WantedBy=basic.target
